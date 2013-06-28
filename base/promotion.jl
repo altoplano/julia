@@ -95,6 +95,7 @@ end
 promote_type()  = None
 promote_type(T) = T
 promote_type(T, S   ) = typejoin(T, S)
+promote_type(T, S, U) = promote_type(T, promote_type(S, U))
 promote_type(T, S...) = promote_type(T, promote_type(S...))
 
 promote_type(::Type{None}, ::Type{None}) = None
@@ -114,48 +115,50 @@ end
 
 promote() = ()
 promote(x) = (x,)
-function promote{T,S}(x::T, y::S)
-    (convert(promote_type(T,S),x), convert(promote_type(T,S),y))
-end
-function promote{T,S,U}(x::T, y::S, z::U)
-    R = promote_type(promote_type(T,S), U)
-    convert((R...), (x, y, z))
-end
-function promote{T,S}(x::T, y::S, zs...)
-    R = promote_type(T,S)
-    for z in zs
-        R = promote_type(R,typeof(z))
+promote{T,S}(x::T, y::S) =
+    (convert(promote_type(T,S),x),
+     convert(promote_type(T,S),y))
+promote{T,S,U}(x::T, y::S, z::U) =
+    (convert(promote_type(T,S,U),x),
+     convert(promote_type(T,S,U),y),
+     convert(promote_type(T,S,U),z))
+promote(xs...) =
+    convert((promote_type(typeof(xs))...), xs)
+function mustpromote(xs...)
+    ys = promote(xs...)
+    if typeseq(typeof(ys), typeof(xs))
+        error("no promotion exists for "*join(typeof(xs),", "," and "))
     end
-    convert((R...), tuple(x,y,zs...))
+    ys
 end
 # TODO: promote{T}(x::T, ys::T...) here to catch all circularities?
 
 ## promotions in arithmetic, etc. ##
 
-+(x::Number, y::Number) = +(promote(x,y)...)
-*(x::Number, y::Number) = *(promote(x,y)...)
--(x::Number, y::Number) = -(promote(x,y)...)
-/(x::Number, y::Number) = /(promote(x,y)...)
-^(x::Number, y::Number) = ^(promote(x,y)...)
++(x::Number, y::Number) = +(mustpromote(x,y)...)
+*(x::Number, y::Number) = *(mustpromote(x,y)...)
+-(x::Number, y::Number) = -(mustpromote(x,y)...)
+/(x::Number, y::Number) = /(mustpromote(x,y)...)
+^(x::Number, y::Number) = ^(mustpromote(x,y)...)
 
-(&)(x::Integer, y::Integer) = (&)(promote(x,y)...)
-(|)(x::Integer, y::Integer) = (|)(promote(x,y)...)
-($)(x::Integer, y::Integer) = ($)(promote(x,y)...)
+(&)(x::Integer, y::Integer) = (&)(mustpromote(x,y)...)
+(|)(x::Integer, y::Integer) = (|)(mustpromote(x,y)...)
+($)(x::Integer, y::Integer) = ($)(mustpromote(x,y)...)
 
-==(x::Number, y::Number) = (==)(promote(x,y)...)
-< (x::Real, y::Real)     = (< )(promote(x,y)...)
-<=(x::Real, y::Real)     = (<=)(promote(x,y)...)
+==(x::Number, y::Number) = (==)(mustpromote(x,y)...)
+< (x::Real, y::Real)     = (< )(mustpromote(x,y)...)
+<=(x::Real, y::Real)     = (<=)(mustpromote(x,y)...)
 
-div(x::Real, y::Real) = div(promote(x,y)...)
-fld(x::Real, y::Real) = fld(promote(x,y)...)
-rem(x::Real, y::Real) = rem(promote(x,y)...)
-mod(x::Real, y::Real) = mod(promote(x,y)...)
+div(x::Real, y::Real) = div(mustpromote(x,y)...)
+fld(x::Real, y::Real) = fld(mustpromote(x,y)...)
+rem(x::Real, y::Real) = rem(mustpromote(x,y)...)
+mod(x::Real, y::Real) = mod(mustpromote(x,y)...)
 
-mod1(x::Real, y::Real) = mod1(promote(x,y)...)
-cmp(x::Real, y::Real) = cmp(promote(x,y)...)
+mod1(x::Real, y::Real) = mod1(mustpromote(x,y)...)
+cmp(x::Real, y::Real) = cmp(mustpromote(x,y)...)
 
-max(x::Real, y::Real) = max(promote(x,y)...)
-min(x::Real, y::Real) = min(promote(x,y)...)
+max(x::Real, y::Real) = max(mustpromote(x,y)...)
+min(x::Real, y::Real) = min(mustpromote(x,y)...)
 
 ## catch-alls to prevent infinite recursion when definitions are missing ##
 
