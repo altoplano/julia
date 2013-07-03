@@ -40,26 +40,22 @@ function dependencies(avail::Dict, fix::Dict)
 end
 
 function diff(have::Dict, want::Dict)
-    install = Dict{ByteString,VersionNumber}()
-    update  = Dict{ByteString,(VersionNumber,VersionNumber)}()
-    remove  = Dict{ByteString,VersionNumber}()
+    changes  = Dict{ByteString,(Union(Nothing,VersionNumber),Union(Nothing,VersionNumber))}()
 
     for pkg in sort!(union(keys(have),keys(want)))
         h, w = haskey(have,pkg), haskey(want,pkg)
         if h && w
             if have[pkg] != want[pkg]
-                update[pkg] = (have[pkg], want[pkg])
+                changes[pkg] = (have[pkg], want[pkg])
             end
         elseif h
-            remove[pkg] = have[pkg]
+            changes[pkg] = (have[pkg],nothing)
         elseif w
-            install[pkg] = want[pkg]
+            changes[pkg] = (nothing,want[pkg])
         end
     end
 
-    sort!(collect(install)),
-    sort!(collect(update)),
-    sort!(collect(remove))
+    changes
 end
 
 # Reduce the number of versions by creating equivalence classes, and retaining
