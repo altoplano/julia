@@ -1,154 +1,329 @@
-immutable Complex{T<:Real} <: Number
+# This file is a part of Julia. License is MIT: https://julialang.org/license
+
+"""
+    Complex{T<:Real} <: Number
+
+Complex number type with real and imaginary part of type `T`.
+
+`ComplexF16`, `ComplexF32` and `ComplexF64` are aliases for
+`Complex{Float16}`, `Complex{Float32}` and `Complex{Float64}` respectively.
+"""
+struct Complex{T<:Real} <: Number
     re::T
     im::T
 end
 Complex(x::Real, y::Real) = Complex(promote(x,y)...)
 Complex(x::Real) = Complex(x, zero(x))
 
-typealias Complex128 Complex{Float64}
-typealias Complex64  Complex{Float32}
+"""
+    im
 
-sizeof(::Type{Complex128}) = 16
-sizeof(::Type{Complex64}) = 8
+The imaginary unit.
 
+# Examples
+```jldoctest
+julia> im * im
+-1 + 0im
+```
+"""
+const im = Complex(false, true)
+
+const ComplexF64  = Complex{Float64}
+const ComplexF32  = Complex{Float32}
+const ComplexF16  = Complex{Float16}
+
+Complex{T}(x::Real) where {T<:Real} = Complex{T}(x,0)
+Complex{T}(z::Complex) where {T<:Real} = Complex{T}(real(z),imag(z))
+(::Type{T})(z::Complex) where {T<:Real} =
+    isreal(z) ? T(real(z))::T : throw(InexactError(Symbol(string(T)), T, z))
+
+Complex(z::Complex) = z
+
+promote_rule(::Type{Complex{T}}, ::Type{S}) where {T<:Real,S<:Real} =
+    Complex{promote_type(T,S)}
+promote_rule(::Type{Complex{T}}, ::Type{Complex{S}}) where {T<:Real,S<:Real} =
+    Complex{promote_type(T,S)}
+
+widen(::Type{Complex{T}}) where {T} = Complex{widen(T)}
+
+float(::Type{Complex{T}}) where {T<:AbstractFloat} = Complex{T}
+float(::Type{Complex{T}}) where {T} = Complex{float(T)}
+
+"""
+    real(z)
+
+Return the real part of the complex number `z`.
+
+# Examples
+```jldoctest
+julia> real(1 + 3im)
+1
+```
+"""
 real(z::Complex) = z.re
+
+"""
+    imag(z)
+
+Return the imaginary part of the complex number `z`.
+
+# Examples
+```jldoctest
+julia> imag(1 + 3im)
+3
+```
+"""
 imag(z::Complex) = z.im
 real(x::Real) = x
 imag(x::Real) = zero(x)
 
-convert{T<:Real}(::Type{Complex{T}}, x::Real) =
-    Complex{T}(convert(T,x), convert(T,0))
-convert{T<:Real}(::Type{Complex{T}}, z::Complex{T}) = z
-convert{T<:Real}(::Type{Complex{T}}, z::Complex) =
-    Complex{T}(convert(T,real(z)),convert(T,imag(z)))
+"""
+    reim(z)
 
-convert{T<:Real}(::Type{T}, z::Complex) = (imag(z)==0 ? convert(T,real(z)) :
-                                           throw(InexactError()))
+Return both the real and imaginary parts of the complex number `z`.
 
-promote_rule{T<:Real}(::Type{Complex{T}}, ::Type{T}) = Complex{T}
-promote_rule{T<:Real,S<:Real}(::Type{Complex{T}}, ::Type{S}) =
-    Complex{promote_type(T,S)}
-promote_rule{T<:Real,S<:Real}(::Type{Complex{T}}, ::Type{Complex{S}}) =
-    Complex{promote_type(T,S)}
-
-complex(x, y) = Complex(x, y)
-complex(x) = Complex(x)
-complex(z::Complex) = z
-
-complex128(r::Float64, i::Float64) = Complex{Float64}(r, i)
-complex128(r::Real, i::Real) = complex128(float64(r),float64(i))
-complex128(z) = complex128(real(z), imag(z))
-complex64(r::Float32, i::Float32) = Complex{Float32}(r, i)
-complex64(r::Real, i::Real) = complex64(float32(r),float32(i))
-complex64(z) = complex64(real(z), imag(z))
-
-for fn in _numeric_conversion_func_names
-    @eval $fn(z::Complex) = complex($fn(real(z)),$fn(imag(z)))
-end
-
-isreal{T<:Real}(z::Complex{T}) = imag(z) == 0
-isinteger(z::Complex) = isreal(z) && isinteger(real(z))
-
-isfinite(z::Complex) = isfinite(real(z)) && isfinite(imag(z))
+# Examples
+```jldoctest
+julia> reim(1 + 3im)
+(1, 3)
+```
+"""
 reim(z) = (real(z), imag(z))
 
-function complex_show(io::IO, z::Complex, compact::Bool)
+"""
+    real(T::Type)
+
+Return the type that represents the real part of a value of type `T`.
+e.g: for `T == Complex{R}`, returns `R`.
+Equivalent to `typeof(real(zero(T)))`.
+
+# Examples
+```jldoctest
+julia> real(Complex{Int})
+Int64
+
+julia> real(Float64)
+Float64
+```
+"""
+real(T::Type) = typeof(real(zero(T)))
+real(::Type{T}) where {T<:Real} = T
+real(::Type{Complex{T}}) where {T<:Real} = T
+
+"""
+    isreal(x) -> Bool
+
+Test whether `x` or all its elements are numerically equal to some real number
+including infinities and NaNs. `isreal(x)` is true if `isequal(x, real(x))`
+is true.
+
+# Examples
+```jldoctest
+julia> isreal(5.)
+true
+
+julia> isreal(Inf + 0im)
+true
+
+julia> isreal([4.; complex(0,1)])
+false
+```
+"""
+isreal(x::Real) = true
+isreal(z::Complex) = iszero(imag(z))
+isinteger(z::Complex) = isreal(z) & isinteger(real(z))
+isfinite(z::Complex) = isfinite(real(z)) & isfinite(imag(z))
+isnan(z::Complex) = isnan(real(z)) | isnan(imag(z))
+isinf(z::Complex) = isinf(real(z)) | isinf(imag(z))
+iszero(z::Complex) = iszero(real(z)) & iszero(imag(z))
+isone(z::Complex) = isone(real(z)) & iszero(imag(z))
+
+"""
+    complex(r, [i])
+
+Convert real numbers or arrays to complex. `i` defaults to zero.
+
+# Examples
+```jldoctest
+julia> complex(7)
+7 + 0im
+
+julia> complex([1, 2, 3])
+3-element Array{Complex{Int64},1}:
+ 1 + 0im
+ 2 + 0im
+ 3 + 0im
+```
+"""
+complex(z::Complex) = z
+complex(x::Real) = Complex(x)
+complex(x::Real, y::Real) = Complex(x, y)
+
+"""
+    complex(T::Type)
+
+Return an appropriate type which can represent a value of type `T` as a complex number.
+Equivalent to `typeof(complex(zero(T)))`.
+
+# Examples
+```jldoctest
+julia> complex(Complex{Int})
+Complex{Int64}
+
+julia> complex(Int)
+Complex{Int64}
+```
+"""
+complex(::Type{T}) where {T<:Real} = Complex{T}
+complex(::Type{Complex{T}}) where {T<:Real} = Complex{T}
+
+flipsign(x::Complex, y::Real) = ifelse(signbit(y), -x, x)
+
+function show(io::IO, z::Complex)
     r, i = reim(z)
-    if isnan(r) || isfinite(i)
-        compact ? showcompact(io,r) : show(io,r)
-        if signbit(i)==1 && !isnan(i)
-            i = -i
-            print(io, compact ? "-" : " - ")
-        else
-            print(io, compact ? "+" : " + ")
-        end
-        compact ? showcompact(io, i) : show(io, i)
-        if !(isa(i,Integer) || isa(i,Rational) ||
-             isa(i,FloatingPoint) && isfinite(i))
-            print(io, "*")
-        end
-        print(io, "im")
+    compact = get(io, :compact, false)
+    show(io, r)
+    if signbit(i) && !isnan(i)
+        i = -i
+        print(io, compact ? "-" : " - ")
     else
-        print(io, "complex(",r,",",i,")")
+        print(io, compact ? "+" : " + ")
+    end
+    show(io, i)
+    if !(isa(i,Integer) && !isa(i,Bool) || isa(i,AbstractFloat) && isfinite(i))
+        print(io, "*")
+    end
+    print(io, "im")
+end
+show(io::IO, z::Complex{Bool}) =
+    print(io, z == im ? "im" : "Complex($(z.re),$(z.im))")
+
+function show_unquoted(io::IO, z::Complex, ::Int, prec::Int)
+    if operator_precedence(:+) <= prec
+        print(io, "(")
+        show(io, z)
+        print(io, ")")
+    else
+        show(io, z)
     end
 end
-show(io::IO, z::Complex) = complex_show(io, z, false)
-showcompact(io::IO, z::Complex) = complex_show(io, z, true)
 
-function read{T<:Real}(s::IO, ::Type{Complex{T}})
+function read(s::IO, ::Type{Complex{T}}) where T<:Real
     r = read(s,T)
     i = read(s,T)
     Complex{T}(r,i)
 end
 function write(s::IO, z::Complex)
-    write(s,real(z))
-    write(s,imag(z))
+    write(s,real(z),imag(z))
 end
 
+## byte order swaps: real and imaginary part are swapped individually
+bswap(z::Complex) = Complex(bswap(real(z)), bswap(imag(z)))
 
-## singleton type for imaginary unit constant ##
-
-type ImaginaryUnit <: Number end
-const im = ImaginaryUnit()
-
-convert{T<:Real}(::Type{Complex{T}}, ::ImaginaryUnit) = Complex{T}(zero(T),one(T))
-convert(::Type{Complex}, ::ImaginaryUnit) = Complex(real(im),imag(im))
-
-real(::ImaginaryUnit) = int32(0)
-imag(::ImaginaryUnit) = int32(1)
-
-promote_rule{T<:Complex}(::Type{ImaginaryUnit}, ::Type{T}) = T
-promote_rule{T<:Real}(::Type{ImaginaryUnit}, ::Type{T}) = Complex{T}
-
-show(io::IO, ::ImaginaryUnit) = print(io, "im")
-
-
-## generic functions of complex numbers ##
-
-convert(::Type{Complex}, z::Complex) = z
-convert(::Type{Complex}, x::Real) = complex(x)
+## equality and hashing of complex numbers ##
 
 ==(z::Complex, w::Complex) = (real(z) == real(w)) & (imag(z) == imag(w))
 ==(z::Complex, x::Real) = isreal(z) && real(z) == x
 ==(x::Real, z::Complex) = isreal(z) && real(z) == x
 
 isequal(z::Complex, w::Complex) = isequal(real(z),real(w)) & isequal(imag(z),imag(w))
-isequal(z::Complex, x::Real) = isreal(z) && isequal(real(z),x)
-isequal(x::Real, z::Complex) = isreal(z) && isequal(real(z),x)
 
-hash(z::Complex) = (r = hash(real(z)); isreal(z) ? r : bitmix(r,hash(imag(z))))
+in(x::Complex, r::AbstractRange{<:Real}) = isreal(x) && real(x) in r
 
-conj(z::Complex) = complex(real(z),-imag(z))
+if UInt === UInt64
+    const h_imag = 0x32a7a07f3e7cd1f9
+else
+    const h_imag = 0x3e7cd1f9
+end
+const hash_0_imag = hash(0, h_imag)
+
+function hash(z::Complex, h::UInt)
+    # TODO: with default argument specialization, this would be better:
+    # hash(real(z), h ⊻ hash(imag(z), h ⊻ h_imag) ⊻ hash(0, h ⊻ h_imag))
+    hash(real(z), h ⊻ hash(imag(z), h_imag) ⊻ hash_0_imag)
+end
+
+## generic functions of complex numbers ##
+
+"""
+    conj(z)
+
+Compute the complex conjugate of a complex number `z`.
+
+# Examples
+```jldoctest
+julia> conj(1 + 3im)
+1 - 3im
+```
+"""
+conj(z::Complex) = Complex(real(z),-imag(z))
 abs(z::Complex)  = hypot(real(z), imag(z))
 abs2(z::Complex) = real(z)*real(z) + imag(z)*imag(z)
 inv(z::Complex)  = conj(z)/abs2(z)
-sign(z::Complex) = z/abs(z)
+inv(z::Complex{<:Integer}) = inv(float(z))
 
--(z::Complex) = complex(-real(z), -imag(z))
-+(z::Complex, w::Complex) = complex(real(z) + real(w), imag(z) + imag(w))
--(z::Complex, w::Complex) = complex(real(z) - real(w), imag(z) - imag(w))
-*(z::Complex, w::Complex) = complex(real(z) * real(w) - imag(z) * imag(w),
+-(z::Complex) = Complex(-real(z), -imag(z))
++(z::Complex, w::Complex) = Complex(real(z) + real(w), imag(z) + imag(w))
+-(z::Complex, w::Complex) = Complex(real(z) - real(w), imag(z) - imag(w))
+*(z::Complex, w::Complex) = Complex(real(z) * real(w) - imag(z) * imag(w),
                                     real(z) * imag(w) + imag(z) * real(w))
 
+muladd(z::Complex, w::Complex, x::Complex) =
+    Complex(muladd(real(z), real(w), real(x)) - imag(z)*imag(w), # TODO: use mulsub given #15985
+            muladd(real(z), imag(w), muladd(imag(z), real(w), imag(x))))
+
+# handle Bool and Complex{Bool}
+# avoid type signature ambiguity warnings
++(x::Bool, z::Complex{Bool}) = Complex(x + real(z), imag(z))
++(z::Complex{Bool}, x::Bool) = Complex(real(z) + x, imag(z))
+-(x::Bool, z::Complex{Bool}) = Complex(x - real(z), - imag(z))
+-(z::Complex{Bool}, x::Bool) = Complex(real(z) - x, imag(z))
+*(x::Bool, z::Complex{Bool}) = Complex(x * real(z), x * imag(z))
+*(z::Complex{Bool}, x::Bool) = Complex(real(z) * x, imag(z) * x)
+
++(x::Bool, z::Complex) = Complex(x + real(z), imag(z))
++(z::Complex, x::Bool) = Complex(real(z) + x, imag(z))
+-(x::Bool, z::Complex) = Complex(x - real(z), - imag(z))
+-(z::Complex, x::Bool) = Complex(real(z) - x, imag(z))
+*(x::Bool, z::Complex) = Complex(x * real(z), x * imag(z))
+*(z::Complex, x::Bool) = Complex(real(z) * x, imag(z) * x)
+
++(x::Real, z::Complex{Bool}) = Complex(x + real(z), imag(z))
++(z::Complex{Bool}, x::Real) = Complex(real(z) + x, imag(z))
+function -(x::Real, z::Complex{Bool})
+    # we don't want the default type for -(Bool)
+    re = x-real(z)
+    Complex(re, - oftype(re, imag(z)))
+end
+-(z::Complex{Bool}, x::Real) = Complex(real(z) - x, imag(z))
+*(x::Real, z::Complex{Bool}) = Complex(x * real(z), x * imag(z))
+*(z::Complex{Bool}, x::Real) = Complex(real(z) * x, imag(z) * x)
+
 # adding or multiplying real & complex is common
-*(x::Real, z::Complex) = complex(x * real(z), x * imag(z))
-*(z::Complex, x::Real) = complex(x * real(z), x * imag(z))
-+(x::Real, z::Complex) = complex(x + real(z), imag(z))
-+(z::Complex, x::Real) = complex(x + real(z), imag(z))
--(x::Real, z::Complex) = complex(x - real(z), -imag(z))
--(z::Complex, x::Real) = complex(real(z) - x, imag(z))
++(x::Real, z::Complex) = Complex(x + real(z), imag(z))
++(z::Complex, x::Real) = Complex(x + real(z), imag(z))
+function -(x::Real, z::Complex)
+    # we don't want the default type for -(Bool)
+    re = x - real(z)
+    Complex(re, - oftype(re, imag(z)))
+end
+-(z::Complex, x::Real) = Complex(real(z) - x, imag(z))
+*(x::Real, z::Complex) = Complex(x * real(z), x * imag(z))
+*(z::Complex, x::Real) = Complex(x * real(z), x * imag(z))
 
-# multiplying by im is common
-*(z::ImaginaryUnit, w::ImaginaryUnit) = complex(-imag(z), real(z))
-*(z::ImaginaryUnit, x::Real)    = complex(zero(x), x)
-*(x::Real, z::ImaginaryUnit)    = complex(zero(x), x)
-*(z::ImaginaryUnit, w::Complex) = complex(-imag(w), real(w))
-*(w::Complex, z::ImaginaryUnit) = complex(-imag(w), real(w))
+muladd(x::Real, z::Complex, y::Number) = muladd(z, x, y)
+muladd(z::Complex, x::Real, y::Real) = Complex(muladd(real(z),x,y), imag(z)*x)
+muladd(z::Complex, x::Real, w::Complex) =
+    Complex(muladd(real(z),x,real(w)), muladd(imag(z),x,imag(w)))
+muladd(x::Real, y::Real, z::Complex) = Complex(muladd(x,y,real(z)), imag(z))
+muladd(z::Complex, w::Complex, x::Real) =
+    Complex(muladd(real(z), real(w), x) - imag(z)*imag(w), # TODO: use mulsub given #15985
+            muladd(real(z), imag(w), imag(z) * real(w)))
 
-/(z::Number, w::Complex) = z*inv(w)
-/(z::Complex, x::Real) = complex(real(z)/x, imag(z)/x)
+/(a::R, z::S) where {R<:Real,S<:Complex} = (T = promote_type(R,S); a*inv(T(z)))
+/(z::Complex, x::Real) = Complex(real(z)/x, imag(z)/x)
 
-function /(a::Complex, b::Complex)
+function /(a::Complex{T}, b::Complex{T}) where T<:Real
     are = real(a); aim = imag(a); bre = real(b); bim = imag(b)
     if abs(bre) <= abs(bim)
         if isinf(bre) && isinf(bim)
@@ -157,7 +332,7 @@ function /(a::Complex, b::Complex)
             r = bre / bim
         end
         den = bim + r*bre
-        complex((are*r + aim)/den, (aim*r - are)/den)
+        Complex((are*r + aim)/den, (aim*r - are)/den)
     else
         if isinf(bre) && isinf(bim)
             r = sign(bim)/sign(bre)
@@ -165,35 +340,86 @@ function /(a::Complex, b::Complex)
             r = bim / bre
         end
         den = bre + r*bim
-        complex((are + aim*r)/den, (aim - are*r)/den)
+        Complex((are + aim*r)/den, (aim - are*r)/den)
     end
 end
 
-/(a::Real, b::Complex) =
-    real(convert(promote_type(typeof(a),typeof(b)),a)) /
-    convert(promote_type(typeof(a),typeof(b)),b)
-function /{T<:Real}(a::T, b::Complex{T})
-    bre = real(b); bim = imag(b)
-    if abs(bre) <= abs(bim)
-        if isinf(bre) && isinf(bim)
-            r = sign(bre)/sign(bim)
-        else
-            r = bre / bim
-        end
-        den = bim + r*bre
-        complex(a*r/den, -a/den)
+inv(z::Complex{<:Union{Float16,Float32}}) =
+    oftype(z, conj(widen(z))/abs2(widen(z)))
+
+/(z::Complex{T}, w::Complex{T}) where {T<:Union{Float16,Float32}} =
+    oftype(z, widen(z)*inv(widen(w)))
+
+# robust complex division for double precision
+# the first step is to scale variables if appropriate ,then do calculations
+# in a way that avoids over/underflow (subfuncs 1 and 2), then undo the scaling.
+# scaling variable s and other techniques
+# based on arxiv.1210.4539
+#             a + i*b
+#  p + i*q = ---------
+#             c + i*d
+function /(z::ComplexF64, w::ComplexF64)
+    a, b = reim(z); c, d = reim(w)
+    half = 0.5
+    two = 2.0
+    ab = max(abs(a), abs(b))
+    cd = max(abs(c), abs(d))
+    ov = floatmax(a)
+    un = floatmin(a)
+    ϵ = eps(Float64)
+    bs = two/(ϵ*ϵ)
+    s = 1.0
+    ab >= half*ov  && (a=half*a; b=half*b; s=two*s ) # scale down a,b
+    cd >= half*ov  && (c=half*c; d=half*d; s=s*half) # scale down c,d
+    ab <= un*two/ϵ && (a=a*bs; b=b*bs; s=s/bs      ) # scale up a,b
+    cd <= un*two/ϵ && (c=c*bs; d=d*bs; s=s*bs      ) # scale up c,d
+    abs(d)<=abs(c) ? ((p,q)=robust_cdiv1(a,b,c,d)  ) : ((p,q)=robust_cdiv1(b,a,d,c); q=-q)
+    return ComplexF64(p*s,q*s) # undo scaling
+end
+function robust_cdiv1(a::Float64, b::Float64, c::Float64, d::Float64)
+    r = d/c
+    t = 1.0/(c+d*r)
+    p = robust_cdiv2(a,b,c,d,r,t)
+    q = robust_cdiv2(b,-a,c,d,r,t)
+    return p,q
+end
+function robust_cdiv2(a::Float64, b::Float64, c::Float64, d::Float64, r::Float64, t::Float64)
+    if r != 0
+        br = b*r
+        return (br != 0 ? (a+br)*t : a*t + (b*t)*r)
     else
-        if isinf(bre) && isinf(bim)
-            r = sign(bim)/sign(bre)
-        else
-            r = bim / bre
-        end
-        den = bre + r*bim
-        complex(a/den, -a*r/den)
+        return (a + d*(b/c)) * t
     end
 end
 
-function ssqs{T<:FloatingPoint}(x::T, y::T)
+function inv(w::ComplexF64)
+    c, d = reim(w)
+    half = 0.5
+    two = 2.0
+    cd = max(abs(c), abs(d))
+    ov = floatmax(c)
+    un = floatmin(c)
+    ϵ = eps(Float64)
+    bs = two/(ϵ*ϵ)
+    s = 1.0
+    cd >= half*ov  && (c=half*c; d=half*d; s=s*half) # scale down c,d
+    cd <= un*two/ϵ && (c=c*bs; d=d*bs; s=s*bs      ) # scale up c,d
+    if abs(d)<=abs(c)
+        r = d/c
+        t = 1.0/(c+d*r)
+        p = t
+        q = -r * t
+    else
+        c, d = d, c
+        r = d/c
+        t = 1.0/(c+d*r)
+        p = r * t
+        q = -t
+    end
+    return ComplexF64(p*s,q*s) # undo scaling
+end
+
+function ssqs(x::T, y::T) where T<:AbstractFloat
     k::Int = 0
     ρ = x*x + y*y
     if !isfinite(ρ) && (isinf(x) || isinf(y))
@@ -207,17 +433,17 @@ function ssqs{T<:FloatingPoint}(x::T, y::T)
     ρ, k
 end
 
-function sqrt{T<:FloatingPoint}(z::Complex{T})
+function sqrt(z::Complex{<:AbstractFloat})
     x, y = reim(z)
     if x==y==0
-        return complex(zero(x),y)
+        return Complex(zero(x),y)
     end
     ρ, k::Int = ssqs(x, y)
     if isfinite(x) ρ=ldexp(abs(x),-k)+sqrt(ρ) end
     if isodd(k)
-        k = (k-1)/2
+        k = div(k-1,2)
     else
-        k = k/2-1
+        k = div(k,2)-1
         ρ += ρ
     end
     ρ = ldexp(sqrt(ρ),k) #sqrt((abs(z)+abs(x))/2) without over/underflow
@@ -230,7 +456,7 @@ function sqrt{T<:FloatingPoint}(z::Complex{T})
             η = copysign(ρ,y)
         end
     end
-    complex(ξ,η)
+    Complex(ξ,η)
 end
 sqrt(z::Complex) = sqrt(float(z))
 
@@ -239,27 +465,60 @@ sqrt(z::Complex) = sqrt(float(z))
 #     iz = float(imag(z))
 #     r = sqrt((hypot(rz,iz)+abs(rz))/2)
 #     if r == 0
-#         return complex(zero(iz), iz)
+#         return Complex(zero(iz), iz)
 #     end
 #     if rz >= 0
-#         return complex(r, iz/r/2)
+#         return Complex(r, iz/r/2)
 #     end
-#     return complex(abs(iz)/r/2, copysign(r,iz))
+#     return Complex(abs(iz)/r/2, copysign(r,iz))
 # end
 
-cis(theta::Real) = complex(cos(theta),sin(theta))
-function cis(z::Complex)
-    v = 1/exp(imag(z))
-    complex(v*cos(real(z)), v*sin(real(z)))
+# compute exp(im*theta)
+function cis(theta::Real)
+    s, c = sincos(theta)
+    Complex(c, s)
 end
 
-angle(z::Complex) = atan2(imag(z), real(z))
+"""
+    cis(z)
 
-function log{T<:FloatingPoint}(z::Complex{T})
-    const T0::T  = 0.7071067811865475
-    const T1::T  = 1.25
-    const T2::T  = 3
-    const ln2::T = 0.6931471805599453
+Return ``\\exp(iz)``.
+
+# Examples
+```jldoctest
+julia> cis(π) ≈ -1
+true
+```
+"""
+function cis(z::Complex)
+    v = exp(-imag(z))
+    s, c = sincos(real(z))
+    Complex(v * c, v * s)
+end
+
+"""
+    angle(z)
+
+Compute the phase angle in radians of a complex number `z`.
+
+# Examples
+```jldoctest
+julia> rad2deg(angle(1 + im))
+45.0
+
+julia> rad2deg(angle(1 - im))
+-45.0
+
+julia> rad2deg(angle(-1 - im))
+-135.0
+```
+"""
+angle(z::Complex) = atan(imag(z), real(z))
+
+function log(z::Complex{T}) where T<:AbstractFloat
+    T1::T  = 1.25
+    T2::T  = 3
+    ln2::T = log(convert(T,2))  #0.6931471805599453
     x, y = reim(z)
     ρ, k = ssqs(x,y)
     ax = abs(x)
@@ -269,12 +528,12 @@ function log{T<:FloatingPoint}(z::Complex{T})
     else
         θ, β = ay, ax
     end
-    if k==0 && T0 < β && (β <= T1 || ρ < T2)
+    if k==0 && (0.5 < β*β) && (β <= T1 || ρ < T2)
         ρρ = log1p((β-1)*(β+1)+θ*θ)/2
     else
         ρρ = log(ρ)/2 + k*ln2
     end
-    complex(ρρ, angle(z))
+    Complex(ρρ, angle(z))
 end
 log(z::Complex) = log(float(z))
 
@@ -294,235 +553,312 @@ log(z::Complex) = log(float(z))
 #             re = log(ar) + log1p(r*r)/2
 #         end
 #     end
-#     complex(re, angle(z))
+#     Complex(re, angle(z))
 # end
 
-log10(z::Complex) = log(z)/oftype(real(z),2.302585092994046)
-log2(z::Complex) = log(z)/oftype(real(z),0.6931471805599453)
+function log10(z::Complex)
+    a = log(z)
+    a/log(oftype(real(a),10))
+end
+function log2(z::Complex)
+    a = log(z)
+    a/log(oftype(real(a),2))
+end
 
 function exp(z::Complex)
     zr, zi = reim(z)
-    if isfinite(zr) && !isfinite(zi) return complex(oftype(zr, NaN), oftype(zi, NaN)) end
-    if zr==Inf && zi==0 return complex(zr, zi) end
-    if zr==-Inf && !isfinite(zi) return complex(-zero(zr), copysign(zero(zi), zi)) end
-    if zr==Inf && !isfinite(zi) return complex(-zr, oftype(zr, NaN)) end
-    if isnan(zr) return complex(zr, zi==0 ? zi : zr) end
-    er = zr==Inf ? zr : exp(zr)
-    wr = er*(isfinite(zi) ? cos(zi) : zi)
-    wi = er*(isfinite(zi) ? sin(zi) : zi)
-    complex(wr, wi)
-end
-
-function ^{T<:FloatingPoint}(z::Complex{T}, p::Complex{T})
-    if p==2 #square
-        zr, zi = reim(z)
-        x = (zr-zi)*(zr+zi)
-        y = 2zr*zi
-        if isnan(x)
-            if isinf(y)
-                x = copysign(zero(T),zr)
-            elseif isinf(zi)
-                x = convert(T,-Inf)
-            elseif isinf(zr)
-                x = convert(T,Inf)
-            end
-        elseif isnan(y) && isinf(x)
-            y = copysign(zero(T), y)
+    if isnan(zr)
+        Complex(zr, zi==0 ? zi : zr)
+    elseif !isfinite(zi)
+        if zr == Inf
+            Complex(-zr, oftype(zr,NaN))
+        elseif zr == -Inf
+            Complex(-zero(zr), copysign(zero(zi), zi))
+        else
+            Complex(oftype(zr,NaN), oftype(zi,NaN))
         end
-        complex(x,y)
-    elseif z!=0
-        if p!=0 && isinteger(p)
-            rp = real(p)
-            if rp < 0
-                return power_by_squaring(inv(z), convert(Integer, -rp))
-            else
-                return power_by_squaring(z, convert(Integer, rp))
-            end
+    else
+        er = exp(zr)
+        if iszero(zi)
+            Complex(er, zi)
+        else
+            s, c = sincos(zi)
+            Complex(er * c, er * s)
         end
-        exp(p*log(z))
-    elseif p!=0 #0^p
-        zero(z) #CHECK SIGNS
-    else #0^0
-        zer = copysign(zero(T),real(p))*copysign(zero(T),imag(z))
-        complex(one(T), zer)
     end
 end
 
-function exp2{T}(z::Complex{T})
+function expm1(z::Complex{T}) where T<:Real
+    Tf = float(T)
+    zr,zi = reim(z)
+    if isnan(zr)
+        Complex(zr, zi==0 ? zi : zr)
+    elseif !isfinite(zi)
+        if zr == Inf
+            Complex(-zr, oftype(zr,NaN))
+        elseif zr == -Inf
+            Complex(-one(zr), copysign(zero(zi), zi))
+        else
+            Complex(oftype(zr,NaN), oftype(zi,NaN))
+        end
+    else
+        erm1 = expm1(zr)
+        if zi == 0
+            Complex(erm1, zi)
+        else
+            er = erm1+one(erm1)
+            if isfinite(er)
+                wr = erm1 - 2 * er * (sin(convert(Tf, 0.5) * zi))^2
+                return Complex(wr, er * sin(zi))
+            else
+                s, c = sincos(zi)
+                return Complex(er * c, er * s)
+            end
+        end
+    end
+end
+
+function log1p(z::Complex{T}) where T
+    zr,zi = reim(z)
+    if isfinite(zr)
+        isinf(zi) && return log(z)
+        # This is based on a well-known trick for log1p of real z,
+        # allegedly due to Kahan, only modified to handle real(u) <= 0
+        # differently to avoid inaccuracy near z==-2 and for correct branch cut
+        u = one(float(T)) + z
+        u == 1 ? convert(typeof(u), z) : real(u) <= 0 ? log(u) : log(u)*z/(u-1)
+    elseif isnan(zr)
+        Complex(zr, zr)
+    elseif isfinite(zi)
+        Complex(T(Inf), copysign(zr > 0 ? zero(T) : convert(T, pi), zi))
+    else
+        Complex(T(Inf), T(NaN))
+    end
+end
+
+function exp2(z::Complex{T}) where T<:AbstractFloat
     er = exp2(real(z))
     theta = imag(z) * log(convert(T, 2))
-    complex(er*cos(theta), er*sin(theta))
+    s, c = sincos(theta)
+    Complex(er * c, er * s)
 end
+exp2(z::Complex) = exp2(float(z))
 
-function exp10{T}(z::Complex{T})
+function exp10(z::Complex{T}) where T<:AbstractFloat
     er = exp10(real(z))
     theta = imag(z) * log(convert(T, 10))
-    complex(er*cos(theta), er*sin(theta))
+    s, c = sincos(theta)
+    Complex(er * c, er * s)
 end
+exp10(z::Complex) = exp10(float(z))
 
-function ^{T<:Complex}(z::T, p::T)
-    if isinteger(p)
-        rp = real(p)
-        if rp < 0
-            return power_by_squaring(inv(float(z)), convert(Integer, -rp))
-        else
-            return power_by_squaring(float(z), convert(Integer, rp))
-        end
-    end
-    pr, pim = reim(p)
-    zr, zi = reim(z)
-    r = abs(z)
-    rp = r^pr
-    theta = atan2(zi, zr)
-    ntheta = pr*theta
-    if pim != 0 && r != 0
-        rp = rp*exp(-pim*theta)
-        ntheta = ntheta + pim*log(r)
-    end
-    cosntheta = cos(ntheta)
-    sinntheta = sin(ntheta)
-    re, im = rp*cosntheta, rp*sinntheta
-    if isinf(rp)
-        if isnan(re)
-            re = copysign(zero(re), cosntheta)
-        end
-        if isnan(im)
-            im = copysign(zero(im), sinntheta)
-        end
-    end
-
-    # apply some corrections to force known zeros
-    if pim == 0
-        ip = itrunc(pr)
-        if ip == pr
-            if zi == 0
-                im = copysign(zero(im), im)
-            elseif zr == 0
-                if isodd(ip)
-                    re = copysign(zero(re), re)
+# _cpow helper function to avoid method ambiguity with ^(::Complex,::Real)
+function _cpow(z::Union{T,Complex{T}}, p::Union{T,Complex{T}}) where {T<:AbstractFloat}
+    if isreal(p)
+        pᵣ = real(p)
+        if isinteger(pᵣ) && abs(pᵣ) < typemax(Int32)
+            # |p| < typemax(Int32) serves two purposes: it prevents overflow
+            # when converting p to Int, and it also turns out to be roughly
+            # the crossover point for exp(p*log(z)) or similar to be faster.
+            if iszero(pᵣ) # fix signs of imaginary part for z^0
+                zer = flipsign(copysign(zero(T),pᵣ), imag(z))
+                return Complex(one(T), zer)
+            end
+            ip = convert(Int, pᵣ)
+            if isreal(z)
+                zᵣ = real(z)
+                if ip < 0
+                    iszero(z) && return Complex(T(NaN),T(NaN))
+                    re = power_by_squaring(inv(zᵣ), -ip)
+                    im = -imag(z)
                 else
-                    im = copysign(zero(im), im)
+                    re = power_by_squaring(zᵣ, ip)
+                    im = imag(z)
+                end
+                # slightly tricky to get the correct sign of zero imag. part
+                return Complex(re, ifelse(iseven(ip) & signbit(zᵣ), -im, im))
+            else
+                return ip < 0 ? power_by_squaring(inv(z), -ip) : power_by_squaring(z, ip)
+            end
+        elseif isreal(z)
+            # (note: if both z and p are complex with ±0.0 imaginary parts,
+            #  the sign of the ±0.0 imaginary part of the result is ambiguous)
+            if iszero(real(z))
+                return pᵣ > 0 ? complex(z) : Complex(T(NaN),T(NaN)) # 0 or NaN+NaN*im
+            elseif real(z) > 0
+                return Complex(real(z)^pᵣ, z isa Real ? ifelse(real(z) < 1, -imag(p), imag(p)) : flipsign(imag(z), pᵣ))
+            else
+                zᵣ = real(z)
+                rᵖ = (-zᵣ)^pᵣ
+                if isfinite(pᵣ)
+                    # figuring out the sign of 0.0 when p is a complex number
+                    # with zero imaginary part and integer/2 real part could be
+                    # improved here, but it's not clear if it's worth it…
+                    return rᵖ * complex(cospi(pᵣ), flipsign(sinpi(pᵣ),imag(z)))
+                else
+                    iszero(rᵖ) && return zero(Complex{T}) # no way to get correct signs of 0.0
+                    return Complex(T(NaN),T(NaN)) # non-finite phase angle or NaN input
                 end
             end
         else
-            dr = pr*2
-            ip = itrunc(dr)
-            if ip == dr && zi == 0
-                if zr < 0
-                    re = copysign(zero(re), re)
-                else
-                    im = copysign(zero(im), im)
-                end
-            end
+            rᵖ = abs(z)^pᵣ
+            ϕ = pᵣ*angle(z)
         end
+    elseif isreal(z)
+        iszero(z) && return real(p) > 0 ? complex(z) : Complex(T(NaN),T(NaN)) # 0 or NaN+NaN*im
+        zᵣ = real(z)
+        pᵣ, pᵢ = reim(p)
+        if zᵣ > 0
+            rᵖ = zᵣ^pᵣ
+            ϕ = pᵢ*log(zᵣ)
+        else
+            r = -zᵣ
+            θ = copysign(T(π),imag(z))
+            rᵖ = r^pᵣ * exp(-pᵢ*θ)
+            ϕ = pᵣ*θ + pᵢ*log(r)
+        end
+    else
+        pᵣ, pᵢ = reim(p)
+        r = abs(z)
+        θ = angle(z)
+        rᵖ = r^pᵣ * exp(-pᵢ*θ)
+        ϕ = pᵣ*θ + pᵢ*log(r)
     end
 
-    complex(re, im)
+    if isfinite(ϕ)
+        return rᵖ * cis(ϕ)
+    else
+        iszero(rᵖ) && return zero(Complex{T}) # no way to get correct signs of 0.0
+        return Complex(T(NaN),T(NaN)) # non-finite phase angle or NaN input
+    end
 end
+_cpow(z, p) = _cpow(float(z), float(p))
+^(z::Complex{T}, p::Complex{T}) where T<:Real = _cpow(z, p)
+^(z::Complex{T}, p::T) where T<:Real = _cpow(z, p)
+^(z::T, p::Complex{T}) where T<:Real = _cpow(z, p)
 
 ^(z::Complex, n::Bool) = n ? z : one(z)
-^(z::Complex, n::Integer) = z^complex(n)
+^(z::Complex, n::Integer) = z^Complex(n)
 
-^{T<:FloatingPoint}(z::Complex{T}, n::Bool) = n ? z : one(z)  # to resolve ambiguity
-^{T<:Integer}(z::Complex{T}, n::Bool) = n ? z : one(z)        # to resolve ambiguity
+^(z::Complex{<:AbstractFloat}, n::Bool) = n ? z : one(z)  # to resolve ambiguity
+^(z::Complex{<:Integer}, n::Bool) = n ? z : one(z)        # to resolve ambiguity
 
-^{T<:FloatingPoint}(z::Complex{T}, n::Integer) =
+^(z::Complex{<:AbstractFloat}, n::Integer) =
     n>=0 ? power_by_squaring(z,n) : power_by_squaring(inv(z),-n)
-^{T<:Integer}(z::Complex{T}, n::Integer) = power_by_squaring(z,n) # DomainError for n<0
+^(z::Complex{<:Integer}, n::Integer) = power_by_squaring(z,n) # DomainError for n<0
 
-function sin(z::Complex)
-    zr, zi = reim(z)
-    if !isfinite(zi) && zr == 0 return complex(zr, zi) end
-    if isnan(zr) && !isfinite(zi) return complex(zr, zi) end
-    if !isfinite(zr) && zi == 0 return complex(oftype(zr, NaN), zi) end
-    if !isfinite(zr) && isfinite(zi) return complex(oftype(zr, NaN), oftype(zi, NaN)) end
-    if !isfinite(zr) && !isfinite(zi) return complex(zr, oftype(zi, NaN)) end
-    complex(sin(zr)*cosh(zi), cos(zr)*sinh(zi))
+function ^(z::Complex{T}, p::S) where {T<:Real,S<:Real}
+    P = promote_type(T,S)
+    return Complex{P}(z) ^ P(p)
+end
+function ^(z::T, p::Complex{S}) where {T<:Real,S<:Real}
+    P = promote_type(T,S)
+    return P(z) ^ Complex{P}(p)
 end
 
-function cos(z::Complex)
+function sin(z::Complex{T}) where T
+    F = float(T)
     zr, zi = reim(z)
-    if !isfinite(zi) && zr == 0
-        return complex(isnan(zi) ? zi : oftype(zi, Inf),
-                       isnan(zi) ? zr : zr*-sign(zi))
+    if zr == 0
+        Complex(F(zr), sinh(zi))
+    elseif !isfinite(zr)
+        if zi == 0 || isinf(zi)
+            Complex(F(NaN), F(zi))
+        else
+            Complex(F(NaN), F(NaN))
+        end
+    else
+        s, c = sincos(zr)
+        Complex(s * cosh(zi), c * sinh(zi))
     end
-    if !isfinite(zr) && isinf(zi)
-        return complex(oftype(zr, Inf), oftype(zi, NaN))
-    end
-    if isinf(zr)
-        return complex(oftype(zr, NaN), zi==0 ? -copysign(zi, zr) : oftype(zi, NaN))
-    end
-    if isnan(zr) && zi==0 return complex(zr, abs(zi)) end
-    complex(cos(zr)*cosh(zi), -sin(zr)*sinh(zi))
 end
+
+
+function cos(z::Complex{T}) where T
+    F = float(T)
+    zr, zi = reim(z)
+    if zr == 0
+        Complex(cosh(zi), isnan(zi) ? F(zr) : -flipsign(F(zr),zi))
+    elseif !isfinite(zr)
+        if zi == 0
+            Complex(F(NaN), isnan(zr) ? zero(F) : -flipsign(F(zi),zr))
+        elseif isinf(zi)
+            Complex(F(Inf), F(NaN))
+        else
+            Complex(F(NaN), F(NaN))
+        end
+    else
+        s, c = sincos(zr)
+        Complex(c * cosh(zi), -s * sinh(zi))
+    end
+end
+
 
 function tan(z::Complex)
     zr, zi = reim(z)
-    w = tanh(complex(-zi, zr))
-    complex(imag(w), -real(w))
+    w = tanh(Complex(-zi, zr))
+    Complex(imag(w), -real(w))
 end
 
 function asin(z::Complex)
     zr, zi = reim(z)
     if isinf(zr) && isinf(zi)
-        return complex(copysign(pi/4, zr),zi)
+        return Complex(copysign(oftype(zr,pi)/4, zr),zi)
     elseif isnan(zi) && isinf(zr)
-        return complex(zi, oftype(zr, Inf))
+        return Complex(zi, oftype(zr, Inf))
     end
     ξ = zr == 0       ? zr :
-        !isfinite(zr) ? pi/2*sign(zr) :
-        atan2(zr, real(sqrt(1-z)*sqrt(1+z)))
+        !isfinite(zr) ? oftype(zr,pi)/2 * sign(zr) :
+        atan(zr, real(sqrt(1-z)*sqrt(1+z)))
     η = asinh(copysign(imag(sqrt(conj(1-z))*sqrt(1+z)), imag(z)))
-    complex(ξ,η)
+    Complex(ξ,η)
 end
 
-function acos{T<:FloatingPoint}(z::Complex{T})
+function acos(z::Complex{<:AbstractFloat})
     zr, zi = reim(z)
     if isnan(zr)
-        if isinf(zi) return complex(zr, -zi)
-        else         return complex(zr, zr) end
+        if isinf(zi) return Complex(zr, -zi)
+        else         return Complex(zr, zr) end
     elseif isnan(zi)
-        if isinf(zr) return complex(zi, abs(zr))
-        elseif zr==0 return complex(pi/2, zi)
-        else         return complex(zi, zi) end
+        if isinf(zr) return Complex(zi, abs(zr))
+        elseif zr==0 return Complex(oftype(zr,pi)/2, zi)
+        else         return Complex(zi, zi) end
     elseif zr==zi==0
-        return complex(pi/2, -zi)
+        return Complex(oftype(zr,pi)/2, -zi)
     elseif zr==Inf && zi===0.0
-        return complex(zi, -zr)
+        return Complex(zi, -zr)
     elseif zr==-Inf && zi===-0.0
-        return complex(oftype(zi, pi), -zr)
+        return Complex(oftype(zi,pi), -zr)
     end
-    ξ = 2*atan2(real(sqrt(1-z)), real(sqrt(1+z)))
+    ξ = 2*atan(real(sqrt(1-z)), real(sqrt(1+z)))
     η = asinh(imag(sqrt(conj(1+z))*sqrt(1-z)))
-    if isinf(zr) && isinf(zi) ξ -= pi/4 * sign(zr) end
-    complex(ξ,η)
+    if isinf(zr) && isinf(zi) ξ -= oftype(η,pi)/4 * sign(zr) end
+    Complex(ξ,η)
 end
 acos(z::Complex) = acos(float(z))
 
 function atan(z::Complex)
-    w = atanh(complex(-imag(z),real(z)))
-    complex(imag(w),-real(w))
+    w = atanh(Complex(-imag(z),real(z)))
+    Complex(imag(w),-real(w))
 end
 
 function sinh(z::Complex)
     zr, zi = reim(z)
-    if isinf(zr) && isinf(zi) return complex(zr, oftype(zi, NaN)) end
-    w = sin(complex(zi, zr))
-    complex(imag(w),real(w))
+    w = sin(Complex(zi, zr))
+    Complex(imag(w),real(w))
 end
 
 function cosh(z::Complex)
     zr, zi = reim(z)
-    if isnan(zr) && zi==0 return complex(zr, zi) end
-    cos(complex(-zi,zr))
+    cos(Complex(zi,-zr))
 end
 
-function tanh{T<:FloatingPoint}(z::Complex{T})
-    const Ω = prevfloat(typemax(T))
+function tanh(z::Complex{T}) where T<:AbstractFloat
+    Ω = prevfloat(typemax(T))
     ξ, η = reim(z)
-    if isnan(ξ) && η==0 return complex(ξ, η) end
+    if isnan(ξ) && η==0 return Complex(ξ, η) end
     if 4*abs(ξ) > asinh(Ω) #Overflow?
-        complex(copysign(one(T),ξ),
+        Complex(copysign(one(T),ξ),
                 copysign(zero(T),η*(isfinite(η) ? sin(2*abs(η)) : one(η))))
     else
         t = tan(η)
@@ -530,57 +866,57 @@ function tanh{T<:FloatingPoint}(z::Complex{T})
         s = sinh(ξ)
         ρ = sqrt(1 + s*s) #cosh(ξ)
         if isinf(t)
-            complex(ρ/s,1/t)
+            Complex(ρ/s,1/t)
         else
-            complex(β*ρ*s,t)/(1+β*s*s)
+            Complex(β*ρ*s,t)/(1+β*s*s)
         end
     end
 end
 tanh(z::Complex) = tanh(float(z))
 
 function asinh(z::Complex)
-    w = asin(complex(-imag(z),real(z)))
-    complex(imag(w),-real(w))
+    w = asin(Complex(-imag(z),real(z)))
+    Complex(imag(w),-real(w))
 end
 
 function acosh(z::Complex)
     zr, zi = reim(z)
     if isnan(zr) || isnan(zi)
         if isinf(zr) || isinf(zi)
-            return complex(oftype(zr, Inf), oftype(zi, NaN))
+            return Complex(oftype(zr, Inf), oftype(zi, NaN))
         else
-            return complex(oftype(zr, NaN), oftype(zi, NaN))
+            return Complex(oftype(zr, NaN), oftype(zi, NaN))
         end
     elseif zr==-Inf && zi===-0.0 #Edge case is wrong - WHY?
-        return complex(Inf, -pi)
+        return Complex(oftype(zr,Inf), oftype(zi, -pi))
     end
     ξ = asinh(real(sqrt(conj(z-1))*sqrt(z+1)))
-    η = 2atan2(imag(sqrt(z-1)),real(sqrt(z+1)))
+    η = 2*atan(imag(sqrt(z-1)),real(sqrt(z+1)))
     if isinf(zr) && isinf(zi)
-        η -= pi/4 * sign(zi) * sign(zr)
+        η -= oftype(η,pi)/4 * sign(zi) * sign(zr)
     end
-    complex(ξ, η)
+    Complex(ξ, η)
 end
 
-function atanh{T<:FloatingPoint}(z::Complex{T})
-    const Ω = prevfloat(typemax(T))
-    const θ = sqrt(Ω)/4
-    const ρ = 1/θ
+function atanh(z::Complex{T}) where T<:AbstractFloat
+    Ω = prevfloat(typemax(T))
+    θ = sqrt(Ω)/4
+    ρ = 1/θ
     x, y = reim(z)
     ax = abs(x)
     ay = abs(y)
     if ax > θ || ay > θ #Prevent overflow
         if isnan(y)
             if isinf(x)
-                return complex(copysign(zero(x),x), y)
+                return Complex(copysign(zero(x),x), y)
             else
-                return complex(real(1/z), y)
+                return Complex(real(1/z), y)
             end
         end
         if isinf(y)
-            return complex(copysign(zero(x),x), copysign(pi/2, y))
+            return Complex(copysign(zero(x),x), copysign(oftype(y,pi)/2, y))
         end
-        return complex(real(1/z), copysign(pi/2, y))
+        return Complex(real(1/z), copysign(oftype(y,pi)/2, y))
     elseif ax==1
         if y == 0
             ξ = copysign(oftype(x,Inf),x)
@@ -588,7 +924,7 @@ function atanh{T<:FloatingPoint}(z::Complex{T})
         else
             ym = ay+ρ
             ξ = log(sqrt(sqrt(4+y*y))/sqrt(ym))
-            η = copysign(pi/2+atan(ym/2), y)/2
+            η = copysign(oftype(y,pi)/2 + atan(ym/2), y)/2
         end
     else #Normal case
         ysq = (ay+ρ)^2
@@ -597,8 +933,53 @@ function atanh{T<:FloatingPoint}(z::Complex{T})
         else
             ξ = log1p(4x/((1-x)^2 + ysq))/4
         end
-        η = angle(complex((1-x)*(1+x)-ysq, 2y))/2
+        η = angle(Complex((1-x)*(1+x)-ysq, 2y))/2
     end
-    complex(ξ, η)
+    Complex(ξ, η)
 end
 atanh(z::Complex) = atanh(float(z))
+
+#Rounding complex numbers
+#Requires two different RoundingModes for the real and imaginary components
+"""
+    round(z::Complex[, RoundingModeReal, [RoundingModeImaginary]])
+    round(z::Complex[, RoundingModeReal, [RoundingModeImaginary]]; digits=, base=10)
+    round(z::Complex[, RoundingModeReal, [RoundingModeImaginary]]; sigdigits=, base=10)
+
+Return the nearest integral value of the same type as the complex-valued `z` to `z`,
+breaking ties using the specified [`RoundingMode`](@ref)s. The first
+[`RoundingMode`](@ref) is used for rounding the real components while the
+second is used for rounding the imaginary components.
+
+# Example
+```jldoctest
+julia> round(3.14 + 4.5im)
+3.0 + 4.0im
+```
+"""
+function round(z::Complex, rr::RoundingMode=RoundNearest, ri::RoundingMode=rr; kwargs...)
+    Complex(round(real(z), rr; kwargs...),
+            round(imag(z), ri; kwargs...))
+end
+
+
+float(z::Complex{<:AbstractFloat}) = z
+float(z::Complex) = Complex(float(real(z)), float(imag(z)))
+
+big(::Type{Complex{T}}) where {T<:Real} = Complex{big(T)}
+big(z::Complex{T}) where {T<:Real} = Complex{big(T)}(z)
+
+## Array operations on complex numbers ##
+
+complex(A::AbstractArray{<:Complex}) = A
+
+function complex(A::AbstractArray{T}) where T
+    if !isconcretetype(T)
+        error("`complex` not defined on abstractly-typed arrays; please convert to a more specific type")
+    end
+    convert(AbstractArray{typeof(complex(zero(T)))}, A)
+end
+
+## promotion to complex ##
+
+_default_type(T::Type{Complex}) = Complex{Int}

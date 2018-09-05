@@ -1,150 +1,318 @@
-General Information for Windows
-===============================
+# Julia on Windows
 
-Please see the README at https://github.com/JuliaLang/julia/blob/master/README.md for more complete information about Julia. This is intended to only include information specific to using Julia on Windows.
+This file describes how to install, or build, and use Julia on Windows.
 
-Julia runs on Windows XP SP2 or later (including Windows Vista, Windows 7, and Windows 8). Both the 32-bit and 64-bit versions are supported. The 32-bit i686 binary will run on either 32-bit and 64-bit operating systems. The 64-bit x86_64 binary will only run on 64-bit Windows.
-
-Downloading additional libraries (Tk, Cairo, etc) is not necessary. Julia's package manager will acquire them as needed. For this to work, you must have `7z` installed (not the command-line version / 7za) (see below), and it must be on your path.
-
-Julia requires that the lib and lib/julia directories be part of your `%PATH%` variable to startup. The `julia.bat` script will attempt to do this for you and is the recommended way of running julia on your system. The julia.bat file can be given arguments (e.g. `julia.bat -p 2 script.jl` for running script.jl on two processors) which will be passed directly to julia.exe.
-
-___________________________________________________
-Binary Downloads
-================
-
-Download the latest version of Julia from the downloads page at https://code.google.com/p/julialang/downloads/list
-
-Unzip the download to a folder. Do not attempt to run Julia without extracting the zip archive first (hint: it won't work). Double-click the file Julia.BAT to launch Julia.
-
-Explore and have fun!
-
-Recommended external libraries (essential, if you use binary-only or source distribution, without batteries-included):
-
- - [7z](http://www.7-zip.org/download.html) (install the full program, not the command line version / 7za)
- - [msysGit](https://code.google.com/p/msysgit/downloads/list)
- - [TortoiseGit](https://code.google.com/p/tortoisegit/wiki/Download)
-
-Optional external libraries
-
- - MinGW/MSYS (as described below)
-
-___________________________________________________
-Source Compiling
-================
-
-There are a few environments you can use to build julia. Making this easy requires getting the right environment.
-
-Important Build Errata
-----------------------
-
-- Do not use GCC 4.6 or earlier or gcc-dw2, stuff will be broken
+For more general information about Julia, please see the
+[main README](https://github.com/JuliaLang/julia/blob/master/README.md)
+or the [documentation](https://docs.julialang.org/).
 
 
-Native Compile
---------------
+## General Information for Windows
 
-On Windows, do not use the mingw/msys environment from http://www.mingw.org as it will miscompile the OpenBLAS math library
 
-The recommended way to setup your environment follows:
+### Unicode font support
 
-1. Download and extract MinGW (e.g. x64-4.8.0-release-win32-seh-rev2.7z) to C:/MinGW (or similar location) from
-MinGW-builds [32-bit](http://sourceforge.net/projects/mingwbuilds/files/host-windows/releases/4.8.0/32-bit/threads-win32/sjlj/)
-or [64-bit](http://sourceforge.net/projects/mingwbuilds/files/host-windows/releases/4.8.0/64-bit/threads-win32/seh/) 
-2. Download and extract MSYS (e.g. msys+7za+wget+svn+git+mercurial+cvs-rev12.7z) to C:/MinGW/msys/1.0 (or similar location) from [MinGW-w64/MSYS](http://sourceforge.net/projects/mingwbuilds/files/external-binary-packages/)
-3. Add the line "C:/MinGW /mingw" to C:/MinGW/msys/1.0/etc/fstab (create the file if it doesn't exist)
-4. You will need to replace C:/MinGW/msys/1.0/bin/make.exe with C:/MinGW/msys/1.0/bin/make-old.exe or with a copy of make.exe extracted from [mingw-msys](http://sourceforge.net/projects/mingw/files/MSYS/Base/make/make-3.81-3/) (e.g. make-3.81-3-msys-1.0.13-bin.tar.lzma)
+The built-in Windows fonts have rather poor coverage of the Unicode character
+space.  The free [`DejaVu Sans Mono`](https://dejavu-fonts.github.io/) font can be used
+as a replacement font in the Windows console.  Since Windows 2000, simply
+downloading the font and installing it is insufficient, since Windows keeps a
+list of approved fonts in the registry.
 
-Before proceeding, verify that python.exe from Python 2.7 is available in the MSYS PATH. If Python is not installed on your computer, [download Python 2.7](http://www.python.org/download/releases/2.7.5/) and install with default options (Python 2.7 is required to build LLVM; Python 3.3 will not work).
+Instructions for adding fonts to the terminal are available at
+[this answer on superuser.com](https://superuser.com/a/5079)
 
-If you plan to build Cairo (for graphics), you'll also need to install [CMake](http://www.cmake.org/cmake/resources/software.html).
+Additionally, rather than sticking with the default command prompt, you may want
+to use a different terminal emulator program, such as
+[Conemu](https://conemu.github.io/) or [Mintty](
+https://github.com/mintty/mintty) (note that running Julia on Mintty needs a
+copy of `stty.exe` in your `%PATH%` to work properly).  Alternatively, you may
+prefer the features of a more full-function IDE, such as [Juno](http://junolab.org),
+[Sublime-IJulia](https://github.com/quinnj/Sublime-IJulia), or
+[IJulia](https://github.com/JuliaLang/IJulia.jl).
 
-These sections assume you are familiar with building code. If you are not, you should stop reading now and go the the section on binaries. Regardless of which set of steps you followed above, you are now ready to compile julia. Open a unix shell by launching C:/MinGW/msys/1.0/msys.bat (or your favorite shortcut to that file). 
 
-Run the following commands in your build directory ($HOME at C:/MinGW/msys/1.0/home/your_name is fine)
+### Line endings
 
-1. `git clone https://github.com/JuliaLang/julia.git`
-2. `cd julia`
-3. `make` Avoid using the `-j` argument to make. Windows will sometimes corrupt your build files. Additionally, make will probably lock up several times during the process, using 100% cpu, but not show progress. The only solution appears to be to kill make from the Task Manager and rerunning make. It should pickup where it left off. Expect this to take a very long time (dozens of hours is not uncommon).
+Julia uses binary-mode files exclusively.  Unlike many other Windows programs,
+if you write `\n` to a file, you get a `\n` in the file, not some other bit
+pattern.  This matches the behavior exhibited by other operating systems.  If
+you have installed Git for Windows, it is suggested, but not required, that you
+configure your system Git to use the same convention:
+```sh
+git config --global core.eol lf
+git config --global core.autocrlf input
+```
+or edit `%USERPROFILE%\.gitconfig` and add/edit the lines:
+```
+[core]
+    eol = lf
+    autocrlf = input
+```
 
-Running julia can be done in two ways:
+## Binary distribution
 
-1. `make run-julia[-release|-debug] [DEFAULT_REPL=(basic|readline)]` (e.g. `make run-julia`)
-2. Launching the julia.bat script in usr/bin
+Julia runs on Windows 7 and later.
+Both the 32-bit and 64-bit versions are supported.
+The 32-bit (i686) binary will run on either a 32-bit and 64-bit operating system.
+The 64-bit (x86_64) binary will only run on 64-bit Windows and will otherwise refuse to launch.
 
-Cross-Compile
--------------
+ 1. [Download](https://julialang.org/downloads) the latest version of Julia.
+    Extract the binary to a reasonable destination folder, e.g. `C:\julia`.
 
-If you prefer to cross-compile, the following steps should get you started.
+ 2. Double-click the `julia` shortcut to launch Julia.
 
-### Ubuntu and Mac Dependencies (these steps will work for almost any linux platform)
+ 3. Julia's home directory is the location pointed to by the Windows environment
+    variable `%HOME%`: this directory is for instance where the startup file
+    `.julia/config/startup.jl` resides. `%HOMEDRIVE%\%HOMEPATH%` is used as a fallback if
+    `%HOME%` is not defined.
 
-First, you will need to ensure your system has the required dependencies. We need wine, a system compiler, and some downloaders.
+## Source distribution
 
-On Ubuntu: ```apt-get install wine subversion cvs gcc wget```
+### Supported build platforms
 
-On Mac: Install XCode, XCode command line tools, X11 (now [XQuartz](http://xquartz.macosforge.org/)),
-and [MacPorts](http://www.macports.org/install.php) or [Homebrew](http://mxcl.github.io/homebrew/).
-Then run ```port install wine wget``` or ```brew install wine wget```, as appropriate.
+ -  Windows 10: supported (32 and 64 bits)
+ -  Windows 8: supported (32 and 64 bits)
+ -  Windows 7: supported (32 and 64 bits)
 
-On Both:
+### Cygwin-to-MinGW cross-compiling
 
-Unfortunately, the version of gcc installed by Ubuntu is currently 4.6, which does not compile OpenBLAS correctly.
-On Mac, the situation is the same: the version in MacPorts is very old and Homebrew does not have it. So first we need to get
-a cross-compile version of gcc. Most binary packages appear to not include gfortran, so we will need to compile it
-from source (or ask @vtjnash to send you a tgz of my build). This is typically quite a bit of work, so we will use
-[this script](https://code.google.com/p/mingw-w64-dgn/) to make it easy. 
+The recommended way of compiling Julia from source on Windows is by cross
+compiling from [Cygwin](http://www.cygwin.com), using versions of the
+MinGW-w64 compilers available through Cygwin's package manager.
 
-1. `svn checkout http://mingw-w64-dgn.googlecode.com/svn/trunk/ mingw-w64-dgn`
-2. `cd mingw-w64-dgn`
-3. edit `rebuild_cross.sh` and make the following two changes:
-  a. uncomment `export MAKE_OPT="-j 2"`, if appropriate for your machine
-  b. add `fortran` to the end of `--enable-languages=c,c++,objc,obj-c++`
-5. `bash update_source.sh`
-4. `bash rebuild_cross.sh`
-5. `mv cross ~/cross-w64`
-6. `export PATH=$HOME/cross-w64/bin:$PATH` # NOTE: it is important that you remember to always do this before using make in the following steps!, you can put this line in your .profile to make it easy
+ 1. Download and run Cygwin setup for [32 bit](https://cygwin.com/setup-x86.exe)
+    or [64 bit](https://cygwin.com/setup-x86_64.exe). Note, that you can compile
+    either 32 or 64 bit Julia from either 32 or 64 bit Cygwin. 64 bit Cygwin
+    has a slightly smaller but often more up-to-date selection of packages.
 
-Then we can essentially just repeat these steps for the 32-bit compiler, reusing some of the work:
+    Advanced: you may skip steps 2-4 by running:
 
-7. `cd ..`
-8. `cp -a mingw-w64-dgn mingw-w32-dgn`
-9. `cd mingw-w32-dgn`
-10. `rm -r cross build`
-11. `bash rebuild_cross.sh 32r`
-12. `mv cross ~/cross-w32`
-13. `export PATH=$HOME/cross-w32/bin:$PATH` # NOTE: it is important that you remember to always do this before using make in the following steps!, you can put this line in your .profile to make it easy
+        setup-x86_64.exe -s <url> -q -P cmake,gcc-g++,git,make,patch,curl,m4,python,p7zip,mingw64-i686-gcc-g++,mingw64-i686-gcc-fortran,mingw64-x86_64-gcc-g++,mingw64-x86_64-gcc-fortran
+        :: replace <url> with a site from https://cygwin.com/mirrors.html
+        :: or run setup manually first and select a mirror
 
-Note: for systems that support rpm-based package managers, the OpenSUSE build service appears to contain a fully up-to-date versions of the necessary dependencies.
+ 2. Select installation location and download mirror.
 
-### Arch Linux Dependencies
+ 3. At the '*Select Packages'* step, select the following:
 
-1. Install the following packages from the official Arch repository:
-`sudo pacman -S cloog gcc-ada libmpc p7zip ppl subversion zlib`
-2. The rest of the prerequisites consist of the mingw-w64 packages, which are available in the AUR Arch repository. They must be installed exactly in the order they are given or else their installation will fail. The `yaourt` package manager is used for illustration purposes; you may instead follow the [Arch instructions for installing packages from AUR](https://wiki.archlinux.org/index.php/Arch_User_Repository#Installing_packages) or may use your preferred package manager. To start with, install `mingw-w64-binutils` via the command
-`yaourt -S mingw-w64-binutils`
-3. `yaourt -S mingw-w64-headers-svn`
-4. `yaourt -S mingw-w64-headers-bootstrap`
-5. `yaourt -S mingw-w64-gcc-base`
-6. `yaourt -S mingw-w64-crt-svn`
-7. Remove `mingw-w64-headers-bootstrap` without removing its dependent mingw-w64 installed packages by using the command
-`yaourt -Rdd mingw-w64-headers-bootstrap`
-8. `yaourt -S mingw-w64-winpthreads`
-9. Remove `mingw-w64-gcc-base` without removing its installed mingw-w64 dependencies:
-`yaourt -Rdd mingw-w64-gcc-base`
-10. Complete the installation of the required `mingw-w64` packages:
-`yaourt -S mingw-w64-gcc`
+    1.  From the *Devel* category: `cmake`, `gcc-g++`, `git`, `make`, `patch`
+    2.  From the *Net* category: `curl`
+    3.  From *Interpreters* (or *Python*) category: `m4`, `python`
+    4.  From the *Archive* category: `p7zip`
+    5.  For 32 bit Julia, and also from the *Devel* category:
+        `mingw64-i686-gcc-g++` and `mingw64-i686-gcc-fortran`
+    6.  For 64 bit Julia, and also from the *Devel* category:
+        `mingw64-x86_64-gcc-g++` and `mingw64-x86_64-gcc-fortran`
 
-### Cross-building Julia
+ 4. At the *'Resolving Dependencies'* step, be sure to leave *'Select required
+    packages (RECOMMENDED)'* enabled.
 
-Finally, the build and install process for Julia:
+ 5. Allow Cygwin installation to finish, then start from the installed shortcut
+    a *'Cygwin Terminal'*, or *'Cygwin64 Terminal'*, respectively.
 
-1. `git clone https://github.com/JuliaLang/julia.git julia-win32`
-2. `echo override XC_HOST = i686-w64-mingw32 >> Make.user`
-3. `echo override DEFAULT_REPL = basic >> Make.user`
-4. `make`
-5. `make win-extras` (optional step: prepares "batteries" for make dist target)
-4. `make dist`
-6. move the julia-* directory / zip file to the target machine
+ 6. Build Julia and its dependencies from source:
 
-If you are building for 64-bit windows. The steps are essentially the same. Just replace i686 in XC_HOST with x86_64. (note: on Mac, wine only runs in 32-bit mode)
+    1. Get the Julia sources
+       ```sh
+       git clone https://github.com/JuliaLang/julia.git
+       cd julia
+       ```
+       Tip: If you get an `error: cannot fork() for fetch-pack: Resource
+       temporarily unavailable` from git, add `alias git="env PATH=/usr/bin git"`
+       to `~/.bashrc` and restart Cygwin.
+
+    2. Set the `XC_HOST` variable in `Make.user` to indicate MinGW-w64 cross
+       compilation
+       ```sh
+       echo 'XC_HOST = i686-w64-mingw32' > Make.user     # for 32 bit Julia
+       # or
+       echo 'XC_HOST = x86_64-w64-mingw32' > Make.user   # for 64 bit Julia
+       ```
+
+    3. Start the build
+       ```sh
+       make -j 4   # Adjust the number of threads (4) to match your build environment.
+       ```
+
+
+    > Protip: build both!
+    > ```sh
+    > make O=julia-win32 configure
+    > make O=julia-win64 configure
+    > echo 'XC_HOST = i686-w64-mingw32' > julia-win32/Make.user
+    > echo 'XC_HOST = x86_64-w64-mingw32' > julia-win64/Make.user
+    > echo 'ifeq ($(BUILDROOT),$(JULIAHOME))
+    >         $(error "in-tree build disabled")
+    >       endif' >> Make.user
+    > make -C julia-win32  # build for Windows x86 in julia-win32 folder
+    > make -C julia-win64  # build for Windows x86-64 in julia-win64 folder
+    > ```
+
+ 7. Run Julia using the Julia executables directly
+    ```sh
+    usr/bin/julia.exe
+    usr/bin/julia-debug.exe
+    ```
+
+### Compiling with MinGW/MSYS2
+
+Compiling Julia from source using [MSYS2](https://msys2.github.io) has worked
+in the past but is not actively supported. Pull requests to restore support
+would be welcome. See a [past version of this file](
+https://github.com/JuliaLang/julia/blob/v0.6.0/README.windows.md)
+for the former instructions for compiling using MSYS2.
+
+
+### Cross-compiling from Unix
+
+You can also use MinGW-w64 cross compilers to build a Windows version of Julia from
+Linux, Mac, or the Windows Subsystem for Linux (WSL). Note that when compiling in
+WSL, you should use the Linux file system environment, not the `/mnt/` emulated Windows
+paths, since time stamps in `/mnt/` do not work properly as required by configure
+scripts and makefiles (see https://github.com/Microsoft/BashOnWindows/issues/1939).
+
+For maximum compatibility with packages that use [WinRPM.jl](
+https://github.com/JuliaLang/WinRPM.jl) for binary dependencies on Windows, it
+is recommended that you use OpenSUSE 42.2 for cross-compiling a Windows build
+of Julia.  If you use a different Linux distribution or OS X, install
+[Vagrant](http://www.vagrantup.com/downloads) and use the following `Vagrantfile`:
+
+```
+# Vagrantfile for MinGW-w64 cross-compilation of Julia
+
+$script = <<SCRIPT
+# Change the following to i686-w64-mingw32 for 32 bit Julia:
+export XC_HOST=x86_64-w64-mingw32
+# Change the following to 32 for 32 bit Julia:
+export BITS=64
+zypper addrepo http://download.opensuse.org/repositories/windows:mingw:win$BITS/openSUSE_Leap_42.2/windows:mingw:win$BITS.repo
+zypper --gpg-auto-import-keys refresh
+zypper -n install --no-recommends git make cmake tar wine which curl \
+    python python-xml patch gcc-c++ m4 p7zip.i586 libxml2-tools winbind
+zypper -n install mingw$BITS-cross-gcc-c++ mingw$BITS-cross-gcc-fortran \
+    mingw$BITS-libstdc++6 mingw$BITS-libgfortran3 mingw$BITS-libssp0
+# opensuse packages the mingw runtime dlls under sys-root/mingw/bin, not /usr/lib64/gcc
+cp /usr/$XC_HOST/sys-root/mingw/bin/*.dll /usr/lib*/gcc/$XC_HOST/*/
+git clone git://github.com/JuliaLang/julia.git julia
+cd julia
+make -j4 win-extras julia-ui-release
+export WINEDEBUG=-all # suppress wine fixme's
+# this last step may need to be run interactively
+make -j4 binary-dist
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/opensuse-leap-42.2"
+  config.vm.provider :virtualbox do |vb|
+    # Use VBoxManage to customize the VM. For example to change memory:
+    vb.memory = 2048
+  end
+  config.vm.provision :shell, :inline => $script
+end
+```
+
+
+### Cross-building Julia without Vagrant
+
+If you don't care that the build is potentially incompatible with the WinRPM
+ecosystem (or happen to be on opensuse), use the following steps to cross-
+compile julia:
+
+First, you will need to ensure your system has the required dependencies.  We
+need wine (>=1.7.5), a system compiler, and some downloaders.
+
+**On Ubuntu** (on other linux systems, the dependency names are likely to be similar):
+```sh
+apt-get install wine subversion cvs gcc wget p7zip-full winbind mingw-w64
+```
+
+**On Mac**: Install XCode, XCode command line tools, X11 (now [XQuartz](
+http://xquartz.macosforge.org/)), and [MacPorts](http://www.macports.org/install.php)
+or [Homebrew](https://brew.sh/).  Then run `port install wine wget mingw-w64`,
+or `brew install wine wget mingw-w64`, as appropriate.
+
+Then run the build:
+
+ 1. `git clone https://github.com/JuliaLang/julia.git julia-win32`
+ 2. `echo override XC_HOST = i686-w64-mingw32 >> Make.user`
+ 3. `make`
+ 4. `make win-extras` (Necessary before running `make binary-dist`)
+ 5. `make binary-dist`
+ 6. move the `julia-*.exe` installer to the target machine
+
+If you are building for 64-bit windows, the steps are essentially the same.
+Just replace `i686` in `XC_HOST` with `x86_64`. (note: on Mac, wine only runs
+in 32-bit mode).
+
+
+## Debugging a cross-compiled build under wine
+
+The most effective way to debug a cross-compiled version of julia on the cross-
+compilation host is to install a windows version of gdb and run it under wine as
+usual. The pre-built packages available [as part of the MSYS2 project](
+https://sourceforge.net/projects/msys2/files/REPOS/MINGW/) are known to work.
+Apart from the GDB package you may also need the python and termcap packages.
+Finally, GDB's prompt may not work when launch from the command line. This can
+be worked around by prepending `wineconsole` to the regular GDB invocation.
+
+
+## Using a Windows VM
+
+[Vagrant](http://www.vagrantup.com/downloads) can also be used with a Windows
+guest VM via the `Vagrantfile` in [contrib/windows](contrib/windows/Vagrantfile),
+just run `vagrant up` from that folder.
+
+
+## After compiling
+
+Compiling using one of the options above creates a basic Julia build, but not some
+extra components that are included if you run the full Julia binary installer.
+If you need these components, the easiest way to get them is to build the installer
+yourself using ```make win-extras``` followed by ```make binary-dist```, and then
+running the resulting installer.
+
+
+## Windows Build Debugging
+
+
+### GDB hangs with cygwin mintty
+
+- Run gdb under the windows console (cmd) instead. gdb [may not function properly](
+  https://www.cygwin.com/ml/cygwin/2009-02/msg00531.html) under mintty with non-
+  cygwin applications. You can use `cmd /c start` to start the windows console
+  from mintty if necessary.
+
+### GDB not attaching to the right process
+
+ - Use the PID from the windows task manager or `WINPID` from the `ps` command
+   instead of the PID from unix style command line tools (e.g. `pgrep`).  You
+   may need to add the PID column if it is not shown by default in the windows
+   task manager.
+
+### GDB not showing the right backtrace
+
+ - When attaching to the julia process, GDB may not be attaching to the right
+   thread.  Use `info threads` command to show all the threads and
+   `thread <threadno>` to switch threads.
+ - Be sure to use a 32 bit version of GDB to debug a 32 bit build of Julia, or
+   a 64 bit version of GDB to debug a 64 bit build of Julia.
+
+### Build process is slow/eats memory/hangs my computer
+
+ - Disable the Windows [Superfetch](https://en.wikipedia.org/wiki/Windows_Vista_I/O_technologies#SuperFetch)
+   and [Program Compatibility Assistant](
+   http://blogs.msdn.com/b/cjacks/archive/2011/11/22/managing-the-windows-7-program-compatibility-assistant-pca.aspx)
+   services, as they are known to have [spurious interactions](
+   https://cygwin.com/ml/cygwin/2011-12/msg00058.html) with MinGW/Cygwin.
+
+   As mentioned in the link above: excessive memory use by `svchost` specifically
+   may be investigated in the Task Manager by clicking on the high-memory
+   `svchost.exe` process and selecting `Go to Services`. Disable child services
+   one-by-one until a culprit is found.
+
+ - Beware of [BLODA](https://cygwin.com/faq/faq.html#faq.using.bloda).
+   The [vmmap](http://technet.microsoft.com/en-us/sysinternals/dd535533.aspx)
+   tool is indispensable for identifying such software conflicts. Use vmmap to
+   inspect the list of loaded DLLs for bash, mintty, or another persistent
+   process used to drive the build. Essentially *any* DLL outside of the Windows
+   System directory is potential BLODA.

@@ -11,11 +11,11 @@ HEADERS = \
 	dtypes.h \
 	hashing.h \
 	htable.h \
-	ieee754.h \
 	ios.h \
 	libsupport.h \
 	MurmurHash3.h \
 	ptrhash.h \
+	strtod.h \
 	timefuncs.h \
 	utf8.h \
 	utils.h \
@@ -24,7 +24,7 @@ HEADERS = \
 OBJECTS = \
 	hashing.obj \
 	timefuncs.obj \
-	dblprint.obj \
+	strtod.obj \
 	ptrhash.obj \
 	operators.obj \
 	utf8.obj \
@@ -35,10 +35,10 @@ OBJECTS = \
 	libsupportinit.obj \
 	arraylist.obj \
 	asprintf.obj \
-	wcwidth.obj
+	dirname.obj
 
 INCLUDE = $(INCLUDE);$(MAKEDIR)\..\..\deps\libuv\include
-CFLAGS = $(CFLAGS) -D_CRT_SECURE_NO_WARNINGS
+CFLAGS = $(CFLAGS) -D_CRT_SECURE_NO_WARNINGS -DLIBRARY_EXPORTS
 
 default: lib$(NAME).lib
 

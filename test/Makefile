@@ -1,33 +1,31 @@
-JULIAHOME = $(abspath ..)
-include ../Make.inc
+SRCDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+JULIAHOME := $(abspath $(SRCDIR)/..)
+BUILDDIR := .
+STDLIBDIR := $(abspath $(JULIAHOME)/stdlib)
+include $(JULIAHOME)/Make.inc
+# TODO: this Makefile ignores BUILDDIR, except for computing JULIA_EXECUTABLE
 
-TESTS = all core keywordargs numbers strings unicode collections hashing	\
-	remote iostring arrayops linalg blas fft dsp sparse bitarray random		\
-	math functional bigint sorting statistics spawn parallel arpack file	\
-	git pkg pkg2 resolve resolve2 suitesparse complex version pollfd mpfr	\
-	broadcast socket floatapprox priorityqueue readdlm regex
+TESTGROUPS = unicode strings compiler
+TESTS = all stdlib $(TESTGROUPS) \
+        $(patsubst $(STDLIBDIR)/%/,%,$(dir $(wildcard $(STDLIBDIR)/*/.))) \
+		$(filter-out runtests testdefs, \
+			$(patsubst $(SRCDIR)/%.jl,%,$(wildcard $(SRCDIR)/*.jl))) \
+		$(foreach group,$(TESTGROUPS), \
+			$(patsubst $(SRCDIR)/%.jl,%,$(wildcard $(SRCDIR)/$(group)/*.jl)))
+# run `make print-TESTS` to see a list of all tests that can be run
 
-$(TESTS) ::
-	$(QUIET_JULIA) $(call spawn,$(JULIA_EXECUTABLE)) ./runtests.jl $@
+EMBEDDING_ARGS := "JULIA=$(JULIA_EXECUTABLE)" "BIN=$(SRCDIR)/embedding" "CC=$(CC)"
 
-perf:
-ifneq ($(MAKECMDGOALS),perf)
-	$(QUIET_JULIA) $(call spawn,$(JULIA_EXECUTABLE)) perf/$@.jl
-else
-	@$(call spawn,$(JULIA_EXECUTABLE)) perf/$@.jl | perl -nle '@_=split/,/; printf "%-14s %7.3f\n", $$_[1], $$_[2]'
-endif
+default: all
 
-benchmark:
-	@$(MAKE) -C perf $@
+$(TESTS):
+	@cd $(SRCDIR) && \
+	$(call PRINT_JULIA, $(call spawn,$(JULIA_EXECUTABLE)) --check-bounds=yes --startup-file=no ./runtests.jl $@)
+
+embedding:
+	@$(MAKE) -C $(SRCDIR)/$@ check $(EMBEDDING_ARGS)
 
 clean:
-	@$(MAKE) -C perf $@
-	-rm -f libccalltest.${SHLIB_EXT} ccalltest
+	@$(MAKE) -C embedding $@ $(EMBEDDING_ARGS)
 
-.PHONY: $(TESTS) perf benchmark clean
-
-libccalltest.$(SHLIB_EXT): ccalltest.c
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) -O3 $< -fPIC -shared -o $@ $(LDFLAGS) -DCC=$(CC)
-
-ccalltest: ccalltest.c
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) -O3 $< -o $@ $(LDFLAGS) -DCC=$(CC)
+.PHONY: $(TESTS) embedding clean

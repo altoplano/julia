@@ -1,28 +1,9 @@
-#ifndef LIBSUPPORT_H
-#define LIBSUPPORT_H
+// This file is a part of Julia. License is MIT: https://julialang.org/license
+
+#ifndef JL_LIBSUPPORT_H
+#define JL_LIBSUPPORT_H
 
 #include "platform.h"
-
-#if defined(_CPU_X86_64_)
-#  define _P64
-#elif defined(_CPU_X86_)
-#  define _P32
-#elif defined(_OS_WINDOWS_)
-/* Not sure how to determine pointer size on Windows running ARM. */
-#  if _WIN64
-#    define _P64
-#  else
-#    define _P32
-#  endif
-#elif defined(_COMPILER_GCC_)
-#  if __x86_64__ || __ppc64__
-#    define _P64
-#  else
-#    define _P32
-#  endif
-#else
-#  error pointer size not known for your platform / compiler
-#endif
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -35,7 +16,16 @@
 #include "ptrhash.h"
 #include "bitvector.h"
 #include "dirpath.h"
+#include "strtod.h"
 
-DLLEXPORT void libsupport_init(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+JL_DLLEXPORT void libsupport_init(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

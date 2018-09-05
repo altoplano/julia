@@ -30,14 +30,20 @@ WINVER = 0x0600
 
 ###############################################################################
 
+!ifdef INTEL
 CC = icl /nologo /Qstd=c99
 LINK = xilink /nologo
 AR = xilib /nologo
+!else
+CC = cl /nologo /TP
+LINK = link /nologo
+AR = lib /nologo
+!endif
 
 ###############################################################################
 
 CFLAGS = /c /DCRTAPI1=_cdecl /DCRTAPI2=_cdecl /GS /D_WINNT /D_WIN32_WINNT=$(WINVER) /DNTDDI_VERSION=$(WINVER)0000 /DWINVER=$(WINVER) /DWIN32 /D_WIN32
-LFLAGS = /INCREMENTAL:NO
+LFLAGS = /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT
 
 !if "$(CPU)" == "i386"
 CFLAGS = $(CFLAGS) /D_X86_=1
@@ -45,7 +51,7 @@ CFLAGS = $(CFLAGS) /D_X86_=1
 CFLAGS = $(CFLAGS) /D_AMD64_=1 /DWIN64 /D_WIN64
 !endif
 
-!ifdef DEBUG
+!ifdef JL_DEBUG_BUILD
 CFLAGS = $(CFLAGS) /Zi /Od /DDEBUG /MDd
 LFLAGS = $(LFLAGS) /DEBUG
 !else

@@ -1,11 +1,15 @@
+// This file is a part of Julia. License is MIT: https://julialang.org/license
+
 #include <limits.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
 #include "dtypes.h"
 #include "utils.h"
-#include "ieee754.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 double conv_to_double(void *data, numerictype_t tag)
 {
@@ -228,3 +232,7 @@ int cmp_eq(void *a, numerictype_t atag, void *b, numerictype_t btag,
     }
     return 1;
 }
+
+#ifdef __cplusplus
+}
+#endif

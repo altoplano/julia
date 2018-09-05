@@ -1,50 +1,78 @@
-JULIAHOME = $(abspath ..)
+SRCDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+JULIAHOME := $(abspath $(SRCDIR)/..)
+BUILDDIR ?= .
+include $(JULIAHOME)/deps/Versions.make
 include $(JULIAHOME)/Make.inc
+include $(JULIAHOME)/deps/llvm-ver.make
 
 override CFLAGS += $(JCFLAGS)
 override CXXFLAGS += $(JCXXFLAGS)
+override CPPFLAGS += $(JCPPFLAGS)
 
-FLAGS = -Wall -Wno-strict-aliasing -fno-omit-frame-pointer \
-	-I$(JULIAHOME)/src -I$(JULIAHOME)/src/support -I$(BUILD)/include $(CFLAGS) 
+SRCS := repl
 
+HEADERS := $(addprefix $(JULIAHOME)/src/,julia.h julia_assert.h julia_threads.h julia_internal.h options.h) \
+	$(BUILDDIR)/../src/julia_version.h $(wildcard $(JULIAHOME)/src/support/*.h) $(LIBUV_INC)/uv.h
+
+FLAGS := -I$(BUILDROOT)/src -I$(JULIAHOME)/src -I$(JULIAHOME)/src/support -I$(build_includedir)
+ifneq ($(USEMSVC), 1)
+FLAGS += -Wall -Wno-strict-aliasing -fno-omit-frame-pointer -Wc++-compat
+endif
+
+OBJS := $(SRCS:%=$(BUILDDIR)/%.o)
+DOBJS := $(SRCS:%=$(BUILDDIR)/%.dbg.obj)
 DEBUGFLAGS += $(FLAGS)
 SHIPFLAGS += $(FLAGS)
-JLDFLAGS += $(LDFLAGS) $(NO_WHOLE_ARCHIVE) $(call exec,$(LLVM_CONFIG) --ldflags) $(OSLIBS) $(RPATH)
+JLDFLAGS += $(LDFLAGS) $(NO_WHOLE_ARCHIVE) $(OSLIBS) $(RPATH)
 
-julia-release julia-debug: %: %-basic %-readline
-
-release debug:
-	$(MAKE) julia-$@
-
-%.o: %.c repl.h
-	$(QUIET_CC) $(CC) $(CPPFLAGS) $(CFLAGS) $(SHIPFLAGS) -c $< -o $@
-%.do: %.c repl.h
-	$(QUIET_CC) $(CC) $(CPPFLAGS) $(CFLAGS) $(DEBUGFLAGS) -c $< -o $@
+ifeq ($(USE_SYSTEM_LIBM),0)
+ifneq ($(UNTRUSTED_SYSTEM_LIBM),0)
+JLDFLAGS += $(WHOLE_ARCHIVE) $(build_libdir)/libopenlibm.a $(NO_WHOLE_ARCHIVE)
+endif
+endif
 
 ifeq ($(OS),WINNT)
-$(BUILD)/bin/julia.bat: ${JULIAHOME}/contrib/windows/*.bat
-	cp ${JULIAHOME}/contrib/windows/*.bat ${BUILD}/bin
-julia-release julia-debug: $(BUILD)/bin/julia.bat
-endif 
+JLDFLAGS += -municode
+endif
 
-julia-release-basic: $(BUILD)/bin/julia-release-basic$(EXE)
-julia-debug-basic: $(BUILD)/bin/julia-debug-basic$(EXE)
-julia-release-readline: $(BUILD)/bin/julia-release-readline$(EXE)
-julia-debug-readline: $(BUILD)/bin/julia-debug-readline$(EXE)
+default: release
+all: release debug
+release debug :  % : julia-%
 
-$(BUILD)/bin/julia-release-basic$(EXE): repl.o repl-basic.o
-	$(QUIET_LINK) $(CXX) $(LINK_FLAGS) $(SHIPFLAGS) $^ -o $@ -L$(BUILD)/$(JL_PRIVATE_LIBDIR) -L$(BUILD)/$(JL_LIBDIR) $(JLDFLAGS) -ljulia-release
-$(BUILD)/bin/julia-debug-basic$(EXE): repl.do repl-basic.do
-	$(QUIET_LINK) $(CXX) $(LINK_FLAGS) $(DEBUGFLAGS) $^ -o $@ -L$(BUILD)/$(JL_PRIVATE_LIBDIR) -L$(BUILD)/$(JL_LIBDIR) $(JLDFLAGS) -ljulia-debug
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c $(HEADERS)
+	@$(call PRINT_CC, $(CC) $(CPPFLAGS) $(CFLAGS) $(SHIPFLAGS) -c $< -o $@)
+$(BUILDDIR)/%.dbg.obj: $(SRCDIR)/%.c $(HEADERS)
+	@$(call PRINT_CC, $(CC) $(CPPFLAGS) $(CFLAGS) $(DEBUGFLAGS) -c $< -o $@)
 
-$(BUILD)/bin/julia-release-readline$(EXE): repl.o repl-readline.o
-	$(QUIET_LINK) $(CXX) $(LINK_FLAGS) $(SHIPFLAGS) $^ -o $@ $(READLINE) -L$(BUILD)/$(JL_PRIVATE_LIBDIR) -L$(BUILD)/$(JL_LIBDIR) $(JLDFLAGS) -ljulia-release || echo "*** Please ensure that the ncurses-devel package is installed on your OS, and try again. ***"
-$(BUILD)/bin/julia-debug-readline$(EXE): repl.do repl-readline.do
-	$(QUIET_LINK) $(CXX) $(LINK_FLAGS) $(DEBUGFLAGS) $^ -o $@ $(READLINE) -L$(BUILD)/$(JL_PRIVATE_LIBDIR) -L$(BUILD)/$(JL_LIBDIR) $(JLDFLAGS) -ljulia-debug
+ifeq ($(OS),WINNT)
+ifneq ($(USEMSVC), 1)
+$(BUILDDIR)/julia_res.o: $(JULIAHOME)/contrib/windows/julia.rc
+	JLVER=`cat $(JULIAHOME)/VERSION` && \
+	JLVERi=`echo $$JLVER | perl -nle \
+		'/^(\d+)\.?(\d*)\.?(\d*)/ && \
+		print int $$1,",",int $$2,",0,",int $$3'` && \
+	$(CROSS_COMPILE)windres $< -O coff -o $@ -DJLVER=$$JLVERi -DJLVER_STR=\\\"$$JLVER\\\"
+$(build_bindir)/julia$(EXE): julia_res.o
+$(build_bindir)/julia-debug$(EXE): julia_res.o
+endif
+endif
+
+julia-release: $(build_bindir)/julia$(EXE)
+julia-debug: $(build_bindir)/julia-debug$(EXE)
+
+ifneq ($(USEMSVC), 1)
+CXXLD := $(CXX)
+else
+CXXLD := $(LD)
+endif
+
+$(build_bindir)/julia$(EXE): $(OBJS)
+	@$(call PRINT_LINK, $(CXXLD) $(CXXFLAGS) $(CXXLDFLAGS) $(LINK_FLAGS) $(SHIPFLAGS) $^ -o $@ -L$(build_private_libdir) -L$(build_libdir) -L$(build_shlibdir) -ljulia $(JLDFLAGS) $(CXXLDFLAGS))
+$(build_bindir)/julia-debug$(EXE): $(DOBJS)
+	@$(call PRINT_LINK, $(CXXLD) $(CXXFLAGS) $(CXXLDFLAGS) $(LINK_FLAGS) $(DEBUGFLAGS) $^ -o $@ -L$(build_private_libdir) -L$(build_libdir) -L$(build_shlibdir) -ljulia-debug $(JLDFLAGS) $(CXXLDFLAGS))
 
 clean: | $(CLEAN_TARGETS)
-	rm -f *.o *.do
-	rm -f $(BUILD)/bin/julia-*-basic $(BUILD)/bin/julia-*-readline $(BUILD)/bin/julia
+	rm -f *.o *.dbg.obj
+	rm -f $(build_bindir)/julia*
 
 .PHONY: clean release debug julia-release julia-debug
-

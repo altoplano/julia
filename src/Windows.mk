@@ -31,6 +31,7 @@ OBJECTS = \
 	toplevel.obj \
 	jl_uv.obj \
 	jlapi.obj \
+	llvm-simdloop.obj \
 	gc.obj
 
 LIBFLISP = flisp\libflisp.lib
@@ -38,11 +39,15 @@ LIBSUPPORT = support\libsupport.lib
 LIBUV = ..\deps\libuv\libuv.lib
 FLISP = flisp\flisp.exe
 
-INCLUDE = $(INCLUDE);$(MAKEDIR)\..\deps\libuv\include;$(MAKEDIR)\flisp;$(MAKEDIR)\support;C:\Program Files\LLVM\include;
-LIB = $(LIB);C:\Program Files\LLVM\lib;
+INCLUDE = $(INCLUDE);$(MAKEDIR)\..\deps\libuv\include;$(MAKEDIR)\flisp;$(MAKEDIR)\support;C:\Program Files\llvm\include
+!ifdef JL_DEBUG_BUILD
+LIB = $(LIB);C:\Program Files\llvm\lib\Debug
+!else
+LIB = $(LIB);C:\Program Files\llvm\lib\Release
+!endif
 
-CFLAGS = $(CFLAGS) -DCOPY_STACKS -D_CRT_SECURE_NO_WARNINGS
-CFLAGS = $(CFLAGS) -DJL_SYSTEM_IMAGE_PATH=\"../lib/julia/sys.ji\"
+CFLAGS = $(CFLAGS) -D_CRT_SECURE_NO_WARNINGS
+CFLAGS = $(CFLAGS) -DJL_SYSTEM_IMAGE_PATH=\"../lib/julia/sys.ji\" -DLIBRARY_EXPORTS
 
 LIBWINDOWS = \
 	kernel32.lib \

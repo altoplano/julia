@@ -1,26 +1,38 @@
-function is_unix(os::Symbol)
-    if (os==:Windows) return false; 
-    elseif (os==:Linux) return true; 
-    elseif (os==:FreeBSD) return true; 
-    elseif (os==:Darwin) return true; 
-    else error("Unknown Operating System")
+# This file is a part of Julia. License is MIT: https://julialang.org/license
+
+"""
+    @static
+
+Partially evaluate an expression at parse time.
+
+For example, `@static Sys.iswindows() ? foo : bar` will evaluate `Sys.iswindows()` and insert
+either `foo` or `bar` into the expression.
+This is useful in cases where a construct would be invalid on other platforms,
+such as a `ccall` to a non-existent function.
+`@static if Sys.isapple() foo end` and `@static foo <&&,||> bar` are also valid syntax.
+"""
+macro static(ex)
+    if isa(ex, Expr)
+        @label loop
+        hd = ex.head
+        if hd ∈ (:if, :elseif, :&&, :||)
+            cond = Core.eval(__module__, ex.args[1])
+            if xor(cond, hd === :||)
+                return esc(ex.args[2])
+            elseif length(ex.args) == 3
+                br = ex.args[3]
+                if br isa Expr && br.head === :elseif
+                    ex = br
+                    @goto loop
+                else
+                    return esc(ex.args[3])
+                end
+            elseif hd ∈ (:if, :elseif)
+                return nothing
+            else
+                return cond
+            end
+        end
     end
+    throw(ArgumentError("invalid @static macro"))
 end
-
-macro windows_only(ex)
-    OS_NAME == :Windows ? esc(ex) : nothing
-end
-
-macro unix_only(ex)
-    is_unix(OS_NAME) ? esc(ex) : nothing
-end
-
-macro osx_only(ex)
-    OS_NAME == :Darwin ? esc(ex) : nothing
-end
-
-macro linux_only(ex)
-    is_unix(OS_NAME) && OS_NAME != :Darwin ? esc(ex) : nothing
-end
-
-os_name(os::Symbol) = string(os)

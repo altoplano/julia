@@ -1,3 +1,5 @@
+// This file is a part of Julia. License is MIT: https://julialang.org/license
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -20,4 +22,7 @@ const JL_O_SEQUENTIAL   = O_SEQUENTIAL
 #endif
 #ifdef O_RANDOM
 const JL_O_RANDOM       = O_RANDOM
+#endif
+#ifdef O_NOCTTY
+const JL_O_NOCTTY       = O_NOCTTY
 #endif

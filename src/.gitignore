@@ -7,9 +7,9 @@
 /*.exp
 
 /boot.j.inc
-julia_flisp.boot
-julia_flisp.boot.inc
-flisp.boot.inc
+/julia_flisp.boot
+/julia_flisp.boot.inc
+/flisp.boot.inc
 
 /libjulia-debug.a
 /libjulia-debug.so
@@ -17,3 +17,4 @@ flisp.boot.inc
 /libjulia-release.a
 /libjulia-release.so
 /libjulia-release.dylib
+/julia_version.h

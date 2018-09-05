@@ -1,10 +1,13 @@
-Julia is licensed under the MIT License:
+The Julia language is licensed under the MIT License. The "language" consists
+of the compiler (the contents of src/), most of the standard library (base/),
+and some utilities (most of the rest of the files in this repository). See below
+for exceptions.
 
-> Copyright (c) 2009-2012: Jeff Bezanson, Stefan Karpinski, Viral B. Shah, 
+> Copyright (c) 2009-2018: Jeff Bezanson, Stefan Karpinski, Viral B. Shah,
 > and other contributors:
-> 
+>
 > https://github.com/JuliaLang/julia/contributors
-> 
+>
 > Permission is hereby granted, free of charge, to any person obtaining
 > a copy of this software and associated documentation files (the
 > "Software"), to deal in the Software without restriction, including
@@ -12,10 +15,10 @@ Julia is licensed under the MIT License:
 > distribute, sublicense, and/or sell copies of the Software, and to
 > permit persons to whom the Software is furnished to do so, subject to
 > the following conditions:
-> 
+>
 > The above copyright notice and this permission notice shall be
 > included in all copies or substantial portions of the Software.
-> 
+>
 > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 > EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 > MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -24,44 +27,61 @@ Julia is licensed under the MIT License:
 > OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 > WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-[`repl-readline.c`](https://github.com/JuliaLang/julia/blob/master/ui/repl-readline.c)
-is licensed under the GNU General Public License Version 2:
+Julia includes code from the following projects, which have their own licenses:
 
-> Copyright (c) 2009-2012: Jeff Bezanson, Stefan Karpinski, Viral B. Shah.
-> 
-> This program is free software; you can redistribute it and/or modify
-> it under the terms of the GNU General Public License as published by
-> the Free Software Foundation; either version 2 of the License, or
-> (at your option) any later version.
-> 
-> This program is distributed in the hope that it will be useful,
-> but WITHOUT ANY WARRANTY; without even the implied warranty of
-> MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> GNU General Public License for more details.
-> 
-> You should have received a copy of the GNU General Public License along
-> with this program; if not, write to the Free Software Foundation, Inc.,
-> 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+- [crc32c.c](http://stackoverflow.com/questions/17645167/implementing-sse-4-2s-crc32c-in-software) (CRC-32c checksum code by Mark Adler) [[ZLib](https://opensource.org/licenses/Zlib)].
+- [LDC](https://github.com/ldc-developers/ldc/blob/master/LICENSE) (for ccall/cfunction ABI definitions) [BSD-3]. The portion of code that Julia uses from LDC is [BSD-3] licensed.
+- [LLVM](http://releases.llvm.org/3.9.0/LICENSE.TXT) (for parts of src/jitlayers.cpp and src/disasm.cpp) [BSD-3, effectively]
+- [MUSL](http://git.musl-libc.org/cgit/musl/tree/COPYRIGHT) (for getopt implementation on Windows) [MIT]
+- [MINGW](https://sourceforge.net/p/mingw/mingw-org-wsl/ci/legacy/tree/mingwrt/mingwex/dirname.c) (for dirname implementation on Windows) [MIT]
+- [NetBSD](http://www.netbsd.org/about/redistribution.html) (for setjmp, longjmp, and strptime implementations on Windows) [BSD-3]
+- [Python](https://docs.python.org/2/license.html) (for strtod implementation on Windows) [BSD-3, effectively]
 
-External libraries, if used, include their own licenses:
+The following components included in Julia `Base` have their own separate licenses:
 
-- [AMOS](http://www.netlib.org/slatec/guide)
-- [ARPACK](http://www.caam.rice.edu/software/ARPACK/RiceBSD.txt#LICENSE)
-- [D3](https://github.com/mbostock/d3/raw/master/LICENSE)
-- [DOUBLE-CONVERSION](https://code.google.com/p/double-conversion/)
-- [DSFMT](http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/LICENSE.txt)
-- [OPENLIBM](https://github.com/JuliaLang/openlibm/blob/master/LICENSE.md)
-- [FADDEEVA](http://ab-initio.mit.edu/Faddeeva)
-- [FEMTOLISP](https://github.com/JeffBezanson/femtolisp)
-- [FFTW](http://fftw.org/doc/License-and-Copyright.html)
-- [GMP](http://gmplib.org/manual/Copying.html#Copying)
-- [LAPACK](http://netlib.org/lapack/LICENSE.txt)
-- [LIBUNWIND](http://git.savannah.gnu.org/gitweb/?p=libunwind.git;a=blob_plain;f=LICENSE;hb=master)
-- [LLVM](http://llvm.org/releases/3.0/LICENSE.TXT)
-- [MPFR](http://www.mpfr.org/mpfr-current/mpfr.html#Copying)
-- [OPENBLAS](https://raw.github.com/xianyi/OpenBLAS/master/LICENSE)
-- [PCRE](http://www.pcre.org/licence.txt)
-- [READLINE](http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html)
-- [RMATH](http://www.r-project.org/Licenses/)
-- [SUITESPARSE](http://www.cise.ufl.edu/research/sparse/SuiteSparse/current/SuiteSparse/)
+- base/grisu/* [BSD-3] (see [double-conversion](https://github.com/google/double-conversion/blob/master/LICENSE))
+- base/special/{exp,rem_pio2,hyperbolic}.jl [Freely distributable with preserved copyright notice] (see [FDLIBM](http://www.netlib.org/fdlibm))
+
+The Julia language links to the following external libraries, which have their
+own licenses:
+
+- [FEMTOLISP](https://github.com/JeffBezanson/femtolisp) [BSD-3]
+- [LIBUNWIND](http://git.savannah.gnu.org/gitweb/?p=libunwind.git;a=blob_plain;f=LICENSE;hb=master) [MIT]
+- [LIBUV](https://github.com/joyent/libuv/blob/master/LICENSE) [MIT]
+- [LLVM](http://releases.llvm.org/6.0.0/LICENSE.TXT) [BSD-3, effectively]
+- [UTF8PROC](https://github.com/JuliaStrings/utf8proc) [MIT]
+
+The following components included in `stdlib` have their own separate licenses:
+
+- stdlib/SuiteSparse/umfpack.jl (see [SUITESPARSE](http://suitesparse.com))
+- stdlib/SuiteSparse/cholmod.jl (see [SUITESPARSE](http://suitesparse.com))
+
+Julia's `stdlib` uses the following external libraries, which have their own licenses:
+
+- [DSFMT](http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/LICENSE.txt) [BSD-3]
+- [OPENLIBM](https://github.com/JuliaMath/openlibm/blob/master/LICENSE.md) [MIT, BSD-2, ISC]
+- [GMP](http://gmplib.org/manual/Copying.html#Copying) [LGPL3+ or GPL2+]
+- [LIBGIT2](https://github.com/libgit2/libgit2/blob/development/COPYING) [GPL2+ with unlimited linking exception]
+- [CURL](https://curl.haxx.se/docs/copyright.html) [MIT/X derivative]
+- [LIBSSH2](https://github.com/libssh2/libssh2/blob/master/COPYING) [BSD-3]
+- [MBEDTLS](https://tls.mbed.org/how-to-get) [either GPLv2 or Apache 2.0]
+- [MPFR](http://www.mpfr.org/mpfr-current/mpfr.html#Copying) [LGPL3+]
+- [OPENBLAS](https://raw.github.com/xianyi/OpenBLAS/master/LICENSE) [BSD-3]
+- [LAPACK](http://netlib.org/lapack/LICENSE.txt) [BSD-3]
+- [PCRE](http://www.pcre.org/licence.txt) [BSD-3]
+- [SUITESPARSE](http://suitesparse.com) [mix of LGPL2+ and GPL2+; see individual module licenses]
+
+Julia's build process uses the following external tools:
+
+- [PATCHELF](https://nixos.org/patchelf.html)
+- [OBJCONV](http://www.agner.org/optimize/#objconv)
+
+Julia bundles the following external programs and libraries on some platforms:
+
+- [7-Zip](http://www.7-zip.org/license.txt)
+- [BUSYBOX](https://github.com/rmyorston/busybox-w32/blob/master/LICENSE)
 - [ZLIB](http://zlib.net/zlib_license.html)
+- [LIBEXPAT](http://expat.cvs.sourceforge.net/viewvc/expat/expat/README)
+
+On some platforms, distributions of Julia contain SSL certificate authority certificates,
+released under the [Mozilla Public License](https://en.wikipedia.org/wiki/Mozilla_Public_License).

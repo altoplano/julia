@@ -1,3 +1,5 @@
+// This file is a part of Julia. License is MIT: https://julialang.org/license
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,53 +24,31 @@
 
 #include "timefuncs.h"
 
-#if defined(_OS_WINDOWS_)
-double floattime(void)
-{
-    struct timeb tstruct;
-
-    ftime(&tstruct);
-    return (double)tstruct.time + (double)tstruct.millitm/1.0e3;
-}
-#else
-double tv2float(struct timeval *tv)
-{
-    return (double)tv->tv_sec + (double)tv->tv_usec/1.0e6;
-}
-
-double diff_time(struct timeval *tv1, struct timeval *tv2)
-{
-    return tv2float(tv1) - tv2float(tv2);
-}
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-// return as many bits of system randomness as we can get our hands on
-u_int64_t i64time(void)
+JL_DLLEXPORT int jl_gettimeofday(struct jl_timeval *jtv)
 {
-    u_int64_t a;
 #if defined(_OS_WINDOWS_)
-    struct timeb tstruct;
-    ftime(&tstruct);
-    a = (((u_int64_t)tstruct.time)<<32) + (u_int64_t)tstruct.millitm;
+    struct __timeb64 tb;
+    errno_t code = _ftime64_s(&tb);
+    jtv->sec = tb.time;
+    jtv->usec = tb.millitm * 1000;
 #else
-    struct timeval now;
-    gettimeofday(&now, NULL);
-    a = (((u_int64_t)now.tv_sec)<<32) + (u_int64_t)now.tv_usec;
+    struct timeval tv;
+    int code = gettimeofday(&tv, NULL);
+    jtv->sec = tv.tv_sec;
+    jtv->usec = tv.tv_usec;
 #endif
-
-    return a;
+    return code;
 }
 
-double clock_now(void)
+JL_DLLEXPORT double jl_clock_now(void)
 {
-#if defined(_OS_WINDOWS_)
-    return floattime();
-#else
-    struct timeval now;
-
-    gettimeofday(&now, NULL);
-    return tv2float(&now);
-#endif
+    struct jl_timeval now;
+    jl_gettimeofday(&now);
+    return now.sec + now.usec * 1e-6;
 }
 
 void sleep_ms(int ms)
@@ -88,3 +68,6 @@ void sleep_ms(int ms)
 #endif
 }
 
+#ifdef __cplusplus
+}
+#endif
